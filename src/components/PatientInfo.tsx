@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { motion } from 'framer-motion';
 import { User, Calendar, Pill, Clock, AlertTriangle } from 'lucide-react';
@@ -9,9 +10,9 @@ type PatientInfoProps = {
 
 const PatientInfo = ({ className }: PatientInfoProps) => {
   const patientInfo = {
-    name: 'John Smith',
-    birthDate: '15 May 1975',
-    age: 48,
+    name: 'Nilima',
+    birthDate: '09 January 1993',
+    age: 31,
     lastVisit: '23 April 2023',
     medications: [
       { name: 'Lisinopril', dosage: '10mg', frequency: 'Once daily' },
