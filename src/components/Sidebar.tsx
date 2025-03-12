@@ -11,9 +11,14 @@ import {
   ChevronLeft, 
   ChevronRight,
   LogOut,
-  PanelLeft
+  PanelLeft,
+  Heart,
+  FileText,
+  CalendarClock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useToast } from '@/hooks/use-toast';
 
 type SidebarProps = {
   className?: string;
@@ -23,21 +28,36 @@ const Sidebar = ({ className }: SidebarProps) => {
   const [expanded, setExpanded] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
   const navItems = [
-    { name: 'Dashboard', icon: Home, path: '/dashboard' },
-    { name: 'Chat', icon: MessageSquare, path: '/dashboard/chat' },
-    { name: 'Profile', icon: User, path: '/dashboard/profile' },
-    { name: 'Information', icon: Info, path: '/dashboard/information' },
-    { name: 'Settings', icon: Settings, path: '/dashboard/settings' },
+    { name: 'Dashboard', icon: Home, path: '/dashboard', description: 'View your health overview' },
+    { name: 'Chat Assistant', icon: MessageSquare, path: '/dashboard/chat', description: 'Interact with your health assistant' },
+    { name: 'My Profile', icon: User, path: '/dashboard/profile', description: 'Manage your profile information' },
+    { name: 'Appointments', icon: CalendarClock, path: '/dashboard/appointments', description: 'Schedule and view appointments' },
+    { name: 'Medications', icon: Heart, path: '/dashboard/medications', description: 'Manage your medications' },
+    { name: 'Medical Records', icon: FileText, path: '/dashboard/records', description: 'Access your medical records' },
+    { name: 'About', icon: Info, path: '/dashboard/information', description: 'Learn about our services' },
+    { name: 'Settings', icon: Settings, path: '/dashboard/settings', description: 'Configure your preferences' },
   ];
 
   const isActive = (path: string) => {
-    return location.pathname === path;
+    if (path === '/dashboard' && location.pathname === '/dashboard') {
+      return true;
+    }
+    return location.pathname.startsWith(path) && path !== '/dashboard';
   };
 
   const toggleSidebar = () => {
     setExpanded(prev => !prev);
+  };
+
+  const handleNavigation = (path: string, name: string) => {
+    navigate(path);
+    toast({
+      title: `Navigated to ${name}`,
+      description: "You have successfully navigated to a new section",
+    });
   };
 
   return (
@@ -81,21 +101,21 @@ const Sidebar = ({ className }: SidebarProps) => {
 
       <div className="mt-8 flex flex-col gap-2 flex-1 px-3">
         {navItems.map((item) => (
-          <motion.button
-            key={item.name}
-            className={cn(
-              'flex items-center gap-3 px-3 py-3 rounded-lg transition-colors duration-200',
-              isActive(item.path) 
-                ? 'bg-spa-700 text-white' 
-                : 'hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground'
-            )}
-            onClick={() => navigate(item.path)}
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <item.icon size={20} />
-            <AnimatePresence>
-              {expanded && (
+          expanded ? (
+            <motion.button
+              key={item.name}
+              className={cn(
+                'flex items-center gap-3 px-3 py-3 rounded-lg transition-colors duration-200',
+                isActive(item.path) 
+                  ? 'bg-spa-700 text-white' 
+                  : 'hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground'
+              )}
+              onClick={() => handleNavigation(item.path, item.name)}
+              whileHover={{ x: 4 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <item.icon size={20} />
+              <AnimatePresence>
                 <motion.span
                   initial={{ opacity: 0, width: 0 }}
                   animate={{ opacity: 1, width: 'auto' }}
@@ -104,16 +124,47 @@ const Sidebar = ({ className }: SidebarProps) => {
                 >
                   {item.name}
                 </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
+              </AnimatePresence>
+            </motion.button>
+          ) : (
+            <TooltipProvider key={item.name}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <motion.button
+                    className={cn(
+                      'flex items-center justify-center p-3 rounded-lg transition-colors duration-200 w-full',
+                      isActive(item.path) 
+                        ? 'bg-spa-700 text-white' 
+                        : 'hover:bg-sidebar-accent/50 text-sidebar-foreground/80 hover:text-sidebar-foreground'
+                    )}
+                    onClick={() => handleNavigation(item.path, item.name)}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <item.icon size={20} />
+                  </motion.button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{item.name}</p>
+                  <p className="text-xs text-gray-500">{item.description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )
         ))}
       </div>
 
       <div className="mt-auto p-3">
         <motion.button
           className="flex items-center gap-3 px-3 py-3 w-full rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-500 transition-colors duration-200"
-          onClick={() => navigate('/')}
+          onClick={() => {
+            localStorage.removeItem('user');
+            navigate('/');
+            toast({
+              title: "Logged out successfully",
+              description: "Thank you for using Sails Patient Assistant",
+            });
+          }}
           whileTap={{ scale: 0.95 }}
         >
           <LogOut size={20} />

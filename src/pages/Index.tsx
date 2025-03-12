@@ -1,15 +1,27 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Lock, User, ChevronRight, Heart } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const Index = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [name, setName] = useState('');
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    const loggedInUser = localStorage.getItem('user');
+    if (loggedInUser) {
+      navigate('/dashboard');
+    }
+  }, [navigate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,14 +31,67 @@ const Index = () => {
       setError('Please fill in all fields');
       return;
     }
+
+    if (isSignUp && !name) {
+      setError('Please provide your name');
+      return;
+    }
     
     setIsLoading(true);
     
-    // Simulate login process
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate('/dashboard');
-    }, 1500);
+    if (isSignUp) {
+      // Create a new account
+      setTimeout(() => {
+        // Store user info in localStorage
+        const userData = {
+          email: username,
+          name: name,
+        };
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem(username, password); // Simple password storage (not secure)
+        
+        setIsLoading(false);
+        toast({
+          title: "Account created successfully",
+          description: `Welcome, ${name}!`,
+        });
+        navigate('/dashboard');
+      }, 1000);
+    } else {
+      // Check login credentials
+      setTimeout(() => {
+        setIsLoading(false);
+
+        // Check if this is the hardcoded user
+        if (username === 'nilima.v9@gmail.com' && password === 'Aradhya@01') {
+          const userData = {
+            email: username,
+            name: 'Nilima',
+          };
+          localStorage.setItem('user', JSON.stringify(userData));
+          toast({
+            title: "Login successful",
+            description: "Welcome back, Nilima!",
+          });
+          navigate('/dashboard');
+          return;
+        }
+
+        // For other users, check localStorage
+        const storedPassword = localStorage.getItem(username);
+        
+        if (storedPassword === password) {
+          const userData = JSON.parse(localStorage.getItem('user') || '{}');
+          toast({
+            title: "Login successful",
+            description: `Welcome back, ${userData.name}!`,
+          });
+          navigate('/dashboard');
+        } else {
+          setError('Invalid email or password');
+        }
+      }, 1000);
+    }
   };
   
   const backgroundVariants = {
@@ -41,6 +106,11 @@ const Index = () => {
         duration: 20,
       },
     },
+  };
+
+  const toggleMode = () => {
+    setIsSignUp(!isSignUp);
+    setError('');
   };
 
   return (
@@ -79,8 +149,12 @@ const Index = () => {
                 >
                   <Heart className="text-spa-500" size={32} />
                 </motion.div>
-                <h1 className="text-2xl font-bold text-gray-800">Welcome Back</h1>
-                <p className="text-gray-500 mt-1">Sign in to your patient account</p>
+                <h1 className="text-2xl font-bold text-gray-800">
+                  {isSignUp ? 'Create Account' : 'Welcome Back'}
+                </h1>
+                <p className="text-gray-500 mt-1">
+                  {isSignUp ? 'Sign up for your patient account' : 'Sign in to your patient account'}
+                </p>
               </div>
               
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -94,9 +168,30 @@ const Index = () => {
                   </motion.div>
                 )}
                 
+                {isSignUp && (
+                  <div className="space-y-2">
+                    <label htmlFor="name" className="text-sm font-medium text-gray-700">
+                      Full Name
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <User className="h-5 w-5 text-gray-400" />
+                      </div>
+                      <input
+                        id="name"
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-spa-500 focus:border-transparent transition-all duration-200"
+                        placeholder="Enter your full name"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
                   <label htmlFor="username" className="text-sm font-medium text-gray-700">
-                    Username
+                    Email
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -104,11 +199,11 @@ const Index = () => {
                     </div>
                     <input
                       id="username"
-                      type="text"
+                      type="email"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-spa-500 focus:border-transparent transition-all duration-200"
-                      placeholder="Enter your username"
+                      placeholder="Enter your email"
                     />
                   </div>
                 </div>
@@ -118,9 +213,11 @@ const Index = () => {
                     <label htmlFor="password" className="text-sm font-medium text-gray-700">
                       Password
                     </label>
-                    <button type="button" className="text-sm text-spa-600 hover:text-spa-800 transition-colors">
-                      Forgot password?
-                    </button>
+                    {!isSignUp && (
+                      <button type="button" className="text-sm text-spa-600 hover:text-spa-800 transition-colors">
+                        Forgot password?
+                      </button>
+                    )}
                   </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -152,7 +249,7 @@ const Index = () => {
                       </svg>
                     ) : (
                       <>
-                        Sign In <ChevronRight className="ml-1 h-5 w-5" />
+                        {isSignUp ? 'Create Account' : 'Sign In'} <ChevronRight className="ml-1 h-5 w-5" />
                       </>
                     )}
                   </motion.button>
@@ -161,9 +258,13 @@ const Index = () => {
               
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600">
-                  Don't have an account?{' '}
-                  <button className="text-spa-600 hover:text-spa-800 font-medium transition-colors">
-                    Create account
+                  {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
+                  <button 
+                    type="button"
+                    onClick={toggleMode}
+                    className="text-spa-600 hover:text-spa-800 font-medium transition-colors"
+                  >
+                    {isSignUp ? 'Sign In' : 'Create account'}
                   </button>
                 </p>
               </div>

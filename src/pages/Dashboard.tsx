@@ -1,19 +1,23 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/ChatInterface';
 import VoiceBot from '@/components/VoiceBot';
 import PatientInfo from '@/components/PatientInfo';
-import { Bell, Search, User } from 'lucide-react';
+import { Bell, Search, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
 const Dashboard = () => {
   const [greeting, setGreeting] = useState('');
+  const [userName, setUserName] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
+    // Get the time-appropriate greeting
     const hour = new Date().getHours();
     let newGreeting = 'Good evening';
     
@@ -25,14 +29,33 @@ const Dashboard = () => {
     
     setGreeting(newGreeting);
     
+    // Get user info from localStorage
+    const userData = localStorage.getItem('user');
+    if (!userData) {
+      navigate('/');
+      return;
+    }
+    
+    const user = JSON.parse(userData);
+    setUserName(user.name || 'User');
+    
     // Show welcome toast
     setTimeout(() => {
       toast({
-        title: "Welcome to Sails Patient Assistant",
+        title: `${newGreeting}, ${user.name}!`,
         description: "Your medication and health information is ready for review.",
       });
     }, 1000);
-  }, [toast]);
+  }, [toast, navigate]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    toast({
+      title: "Logged out successfully",
+      description: "Thank you for using Sails Patient Assistant",
+    });
+    navigate('/');
+  };
   
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -75,9 +98,19 @@ const Dashboard = () => {
               <Bell className="h-5 w-5 text-gray-600" />
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-spa-500"></span>
             </button>
-            <div className="h-8 w-8 rounded-full bg-spa-100 flex items-center justify-center">
-              <User className="h-4 w-4 text-spa-600" />
+            <div className="flex items-center">
+              <div className="h-8 w-8 rounded-full bg-spa-100 flex items-center justify-center mr-2">
+                <User className="h-4 w-4 text-spa-600" />
+              </div>
+              <span className="text-sm font-medium">{userName}</span>
             </div>
+            <button 
+              onClick={handleLogout} 
+              className="p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-gray-600 transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </header>
         
@@ -89,7 +122,7 @@ const Dashboard = () => {
             animate="visible"
           >
             <motion.div variants={itemVariants} className="mb-6">
-              <h1 className="text-2xl font-semibold text-gray-800">{greeting}, John</h1>
+              <h1 className="text-2xl font-semibold text-gray-800">{greeting}, {userName}</h1>
               <p className="text-gray-500">Here's your health dashboard overview</p>
             </motion.div>
             
