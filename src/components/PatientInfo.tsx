@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { motion } from 'framer-motion';
-import { User, Calendar, Pills, Clock, AlertTriangle } from 'lucide-react';
+import { User, Calendar, Pill, Clock, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type PatientInfoProps = {
@@ -54,7 +53,7 @@ const PatientInfo = ({ className }: PatientInfoProps) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Pills size={18} className="text-spa-500" />
+                <Pill size={18} className="text-spa-500" />
                 <div>
                   <div className="font-medium text-gray-800">{med.name} ({med.dosage})</div>
                   <div className="text-sm text-gray-500">{med.frequency}</div>
