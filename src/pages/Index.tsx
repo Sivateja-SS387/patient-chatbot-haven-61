@@ -2,8 +2,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, ChevronRight, Heart } from 'lucide-react';
+import { Lock, User, ChevronRight, Heart, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Index = () => {
   const [username, setUsername] = useState('');
@@ -14,6 +18,14 @@ const Index = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Forgot password states
+  const [resetEmail, setResetEmail] = useState('');
+  const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
+  const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
     // Check if user is already logged in
@@ -92,6 +104,86 @@ const Index = () => {
         }
       }, 1000);
     }
+  };
+  
+  const handleForgotPassword = () => {
+    setForgotPasswordOpen(true);
+  };
+
+  const handleResetRequest = () => {
+    if (!resetEmail) {
+      toast({
+        title: "Error",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // First check if the email exists in our system
+    const isHardcodedUser = resetEmail === 'nilima.v9@gmail.com';
+    const isRegisteredUser = localStorage.getItem(resetEmail) !== null;
+
+    if (!isHardcodedUser && !isRegisteredUser) {
+      toast({
+        title: "Email not found",
+        description: "This email is not registered in our system",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Close the first dialog and open the second for password reset
+    setForgotPasswordOpen(false);
+    setResetPasswordOpen(true);
+    toast({
+      title: "Reset link sent",
+      description: "If your email is registered, you'll receive reset instructions",
+    });
+  };
+
+  const handlePasswordReset = () => {
+    if (!newPassword || !confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Update the password in localStorage
+    if (resetEmail === 'nilima.v9@gmail.com') {
+      // Update the hardcoded password logic if needed
+      toast({
+        title: "Success",
+        description: "Your password has been updated. Please sign in with your new password.",
+      });
+    } else {
+      localStorage.setItem(resetEmail, newPassword);
+      toast({
+        title: "Success",
+        description: "Your password has been updated. Please sign in with your new password.",
+      });
+    }
+
+    setResetSuccess(true);
+    setTimeout(() => {
+      setResetPasswordOpen(false);
+      setResetSuccess(false);
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetEmail('');
+    }, 2000);
   };
   
   const backgroundVariants = {
@@ -214,7 +306,11 @@ const Index = () => {
                       Password
                     </label>
                     {!isSignUp && (
-                      <button type="button" className="text-sm text-spa-600 hover:text-spa-800 transition-colors">
+                      <button 
+                        type="button" 
+                        onClick={handleForgotPassword}
+                        className="text-sm text-spa-600 hover:text-spa-800 transition-colors"
+                      >
                         Forgot password?
                       </button>
                     )}
@@ -276,6 +372,114 @@ const Index = () => {
           </p>
         </div>
       </main>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reset your password</DialogTitle>
+            <DialogDescription>
+              Enter your email address and we'll send you a link to reset your password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <label htmlFor="reset-email" className="text-sm font-medium">
+                Email address
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Mail className="h-5 w-5 text-gray-400" />
+                </div>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  className="pl-10"
+                  placeholder="Enter your email"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleResetRequest}>
+              Send reset link
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create new password</DialogTitle>
+            <DialogDescription>
+              Please enter your new password below.
+            </DialogDescription>
+          </DialogHeader>
+          {resetSuccess ? (
+            <Alert className="bg-green-50 border-green-200">
+              <AlertDescription className="text-green-700">
+                Password reset successful! You can now log in with your new password.
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <label htmlFor="new-password" className="text-sm font-medium">
+                    New password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="pl-10"
+                      placeholder="Enter new password"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="confirm-password" className="text-sm font-medium">
+                    Confirm password
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Lock className="h-5 w-5 text-gray-400" />
+                    </div>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pl-10"
+                      placeholder="Confirm new password"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setResetPasswordOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handlePasswordReset}>
+                  Reset password
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
