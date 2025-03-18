@@ -32,24 +32,24 @@ const DashboardHome = () => {
 };
 
 const ProfilePage = () => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4">My Profile</h2>
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+    <h2 className="text-2xl font-semibold mb-4 dark:text-white">My Profile</h2>
     <div className="space-y-4">
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500">Full Name</span>
-        <span className="font-medium">Nilima</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">Full Name</span>
+        <span className="font-medium dark:text-white">Nilima</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500">Email</span>
-        <span className="font-medium">nilima.v9@gmail.com</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">Email</span>
+        <span className="font-medium dark:text-white">nilima.v9@gmail.com</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500">Date of Birth</span>
-        <span className="font-medium">09 January 1993</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">Date of Birth</span>
+        <span className="font-medium dark:text-white">09 January 1993</span>
       </div>
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500">Phone</span>
-        <span className="font-medium">+1 (555) 123-4567</span>
+        <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
+        <span className="font-medium dark:text-white">+1 (555) 123-4567</span>
       </div>
     </div>
   </div>
@@ -62,18 +62,18 @@ const ChatPage = () => (
 );
 
 const AppointmentsPage = () => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4">My Appointments</h2>
-    <p>You have no upcoming appointments scheduled.</p>
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+    <h2 className="text-2xl font-semibold mb-4 dark:text-white">My Appointments</h2>
+    <p className="dark:text-gray-300">You have no upcoming appointments scheduled.</p>
   </div>
 );
 
 const MedicationsPage = () => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4">My Medications</h2>
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+    <h2 className="text-2xl font-semibold mb-4 dark:text-white">My Medications</h2>
     <div className="space-y-4">
       {['Lisinopril', 'Metformin', 'Aspirin'].map((med, index) => (
-        <div key={index} className="p-4 border rounded-lg">
+        <div key={index} className="p-4 border dark:border-gray-700 rounded-lg dark:text-white">
           <h3 className="font-medium">{med}</h3>
         </div>
       ))}
@@ -82,17 +82,17 @@ const MedicationsPage = () => (
 );
 
 const RecordsPage = () => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4">Medical Records</h2>
-    <p>Your medical records will be displayed here.</p>
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+    <h2 className="text-2xl font-semibold mb-4 dark:text-white">Medical Records</h2>
+    <p className="dark:text-gray-300">Your medical records will be displayed here.</p>
   </div>
 );
 
 const InformationPage = () => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4">About Sails Patient Assistant</h2>
-    <p className="mb-4">Sails Patient Assistant is a comprehensive health management platform designed to help patients manage their healthcare needs efficiently.</p>
-    <p>For more information, please contact support.</p>
+  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+    <h2 className="text-2xl font-semibold mb-4 dark:text-white">About Sails Patient Assistant</h2>
+    <p className="mb-4 dark:text-gray-300">Sails Patient Assistant is a comprehensive health management platform designed to help patients manage their healthcare needs efficiently.</p>
+    <p className="dark:text-gray-300">For more information, please contact support.</p>
   </div>
 );
 
@@ -216,7 +216,7 @@ const Dashboard = () => {
   };
 
   return (
-    <div className={cn("h-screen flex overflow-hidden", isDarkMode && "dark")}>
+    <div className={cn("h-screen flex overflow-hidden", isDarkMode ? "dark" : "")}>
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
