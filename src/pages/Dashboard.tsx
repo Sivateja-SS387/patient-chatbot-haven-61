@@ -9,6 +9,11 @@ import PatientInfo from '@/components/PatientInfo';
 import { Bell, Search, User, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 // Create components for each dashboard section
 const DashboardHome = () => {
@@ -109,9 +114,17 @@ const SettingsPage = () => (
 const Dashboard = () => {
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('');
+  const [showNotifications, setShowNotifications] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  // Sample notifications data
+  const notifications = [
+    { id: 1, title: "Appointment Reminder", message: "You have a doctor's appointment tomorrow at 10:00 AM", time: "1 hour ago" },
+    { id: 2, title: "Medication Alert", message: "Time to take your evening medication", time: "3 hours ago" },
+    { id: 3, title: "Lab Results", message: "Your recent lab results are now available", time: "Yesterday" },
+  ];
   
   useEffect(() => {
     // Get the time-appropriate greeting
@@ -144,6 +157,14 @@ const Dashboard = () => {
       description: "Thank you for using Sails Patient Assistant",
     });
     navigate('/');
+  };
+  
+  const handleNotificationClick = (id: number) => {
+    toast({
+      title: "Notification viewed",
+      description: "You've opened notification #" + id,
+    });
+    setShowNotifications(false);
   };
   
   const containerVariants = {
@@ -197,10 +218,39 @@ const Dashboard = () => {
           </div>
           
           <div className="flex items-center gap-3">
-            <button className="p-2 rounded-full hover:bg-gray-100 relative">
-              <Bell className="h-5 w-5 text-gray-600" />
-              <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-spa-500"></span>
-            </button>
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="p-2 rounded-full hover:bg-gray-100 relative" aria-label="Notifications">
+                  <Bell className="h-5 w-5 text-gray-600" />
+                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-spa-500"></span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-0" align="end">
+                <div className="p-4 border-b">
+                  <h3 className="font-medium">Notifications</h3>
+                </div>
+                <div className="max-h-96 overflow-auto divide-y">
+                  {notifications.map((notification) => (
+                    <div 
+                      key={notification.id} 
+                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => handleNotificationClick(notification.id)}
+                    >
+                      <div className="flex justify-between items-start mb-1">
+                        <h4 className="font-medium text-sm">{notification.title}</h4>
+                        <span className="text-xs text-gray-500">{notification.time}</span>
+                      </div>
+                      <p className="text-sm text-gray-600">{notification.message}</p>
+                    </div>
+                  ))}
+                </div>
+                {notifications.length === 0 && (
+                  <div className="p-4 text-center text-gray-500">
+                    No new notifications
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             <div className="flex items-center">
               <div className="h-8 w-8 rounded-full bg-spa-100 flex items-center justify-center mr-2">
                 <User className="h-4 w-4 text-spa-600" />
