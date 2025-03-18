@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const Index = () => {
   const [username, setUsername] = useState('');
@@ -18,6 +19,7 @@ const Index = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { isDarkMode } = useTheme();
   
   // Forgot password states
   const [resetEmail, setResetEmail] = useState('');
@@ -208,7 +210,9 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col">
       <motion.div 
-        className="absolute inset-0 -z-10 bg-gradient-to-br from-spa-50 via-white to-spa-100 bg-[length:400%_400%]"
+        className={`absolute inset-0 -z-10 ${isDarkMode 
+          ? "bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900" 
+          : "bg-gradient-to-br from-spa-50 via-white to-spa-100"} bg-[length:400%_400%]`}
         variants={backgroundVariants}
         initial="initial"
         animate="animate"
@@ -216,8 +220,10 @@ const Index = () => {
       
       <header className="py-6 px-8">
         <div className="flex items-center">
-          <Heart className="text-spa-500 mr-2" size={24} />
-          <span className="text-xl font-semibold bg-gradient-to-r from-spa-700 to-spa-500 bg-clip-text text-transparent">
+          <Heart className={isDarkMode ? "text-spa-300 mr-2" : "text-spa-500 mr-2"} size={24} />
+          <span className={isDarkMode 
+            ? "text-xl font-semibold text-white" 
+            : "text-xl font-semibold bg-gradient-to-r from-spa-700 to-spa-500 bg-clip-text text-transparent"}>
             Sails Patient Assistant
           </span>
         </div>
@@ -229,7 +235,7 @@ const Index = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="bg-white rounded-xl shadow-xl overflow-hidden"
+            className={`${isDarkMode ? "bg-gray-800 border border-gray-700" : "bg-white"} rounded-xl shadow-xl overflow-hidden`}
           >
             <div className="p-8">
               <div className="text-center mb-8">
@@ -237,14 +243,14 @@ const Index = () => {
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.5, delay: 0.2 }}
-                  className="inline-flex h-16 w-16 rounded-full bg-spa-100 items-center justify-center mb-4"
+                  className={`inline-flex h-16 w-16 rounded-full ${isDarkMode ? "bg-gray-700" : "bg-spa-100"} items-center justify-center mb-4`}
                 >
-                  <Heart className="text-spa-500" size={32} />
+                  <Heart className={isDarkMode ? "text-spa-300" : "text-spa-500"} size={32} />
                 </motion.div>
-                <h1 className="text-2xl font-bold text-gray-800">
+                <h1 className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-800"}`}>
                   {isSignUp ? 'Create Account' : 'Welcome Back'}
                 </h1>
-                <p className="text-gray-500 mt-1">
+                <p className={`${isDarkMode ? "text-gray-300" : "text-gray-500"} mt-1`}>
                   {isSignUp ? 'Sign up for your patient account' : 'Sign in to your patient account'}
                 </p>
               </div>
@@ -254,7 +260,7 @@ const Index = () => {
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-red-50 text-red-600 p-3 rounded-lg text-sm"
+                    className={`${isDarkMode ? "bg-red-900/50 text-red-200" : "bg-red-50 text-red-600"} p-3 rounded-lg text-sm`}
                   >
                     {error}
                   </motion.div>
@@ -262,19 +268,21 @@ const Index = () => {
                 
                 {isSignUp && (
                   <div className="space-y-2">
-                    <label htmlFor="name" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="name" className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
                       Full Name
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <User className="h-5 w-5 text-gray-400" />
+                        <User className={`h-5 w-5 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`} />
                       </div>
                       <input
                         id="name"
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-spa-500 focus:border-transparent transition-all duration-200"
+                        className={`block w-full pl-10 pr-3 py-2 border ${isDarkMode 
+                          ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-spa-500" 
+                          : "border-gray-300 focus:ring-spa-500 focus:border-transparent"} rounded-lg transition-all duration-200`}
                         placeholder="Enter your full name"
                       />
                     </div>
@@ -282,19 +290,21 @@ const Index = () => {
                 )}
                 
                 <div className="space-y-2">
-                  <label htmlFor="username" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="username" className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
                     Email
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <User className="h-5 w-5 text-gray-400" />
+                      <User className={`h-5 w-5 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`} />
                     </div>
                     <input
                       id="username"
                       type="email"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-spa-500 focus:border-transparent transition-all duration-200"
+                      className={`block w-full pl-10 pr-3 py-2 border ${isDarkMode 
+                        ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-spa-500" 
+                        : "border-gray-300 focus:ring-spa-500 focus:border-transparent"} rounded-lg transition-all duration-200`}
                       placeholder="Enter your email"
                     />
                   </div>
@@ -302,14 +312,16 @@ const Index = () => {
                 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label htmlFor="password" className="text-sm font-medium text-gray-700">
+                    <label htmlFor="password" className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : "text-gray-700"}`}>
                       Password
                     </label>
                     {!isSignUp && (
                       <button 
                         type="button" 
                         onClick={handleForgotPassword}
-                        className="text-sm text-spa-600 hover:text-spa-800 transition-colors"
+                        className={`text-sm ${isDarkMode 
+                          ? "text-spa-300 hover:text-spa-200" 
+                          : "text-spa-600 hover:text-spa-800"} transition-colors`}
                       >
                         Forgot password?
                       </button>
@@ -317,14 +329,16 @@ const Index = () => {
                   </div>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                      <Lock className={`h-5 w-5 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`} />
                     </div>
                     <input
                       id="password"
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-spa-500 focus:border-transparent transition-all duration-200"
+                      className={`block w-full pl-10 pr-3 py-2 border ${isDarkMode 
+                        ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400 focus:ring-spa-500" 
+                        : "border-gray-300 focus:ring-spa-500 focus:border-transparent"} rounded-lg transition-all duration-200`}
                       placeholder="Enter your password"
                     />
                   </div>
@@ -334,7 +348,9 @@ const Index = () => {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    className="btn-hover-effect w-full bg-spa-600 text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center transition-all duration-200 hover:bg-spa-700"
+                    className={`btn-hover-effect w-full ${isDarkMode 
+                      ? "bg-spa-500 hover:bg-spa-600" 
+                      : "bg-spa-600 hover:bg-spa-700"} text-white py-2 px-4 rounded-lg font-medium flex items-center justify-center transition-all duration-200`}
                     type="submit"
                     disabled={isLoading}
                   >
@@ -353,12 +369,14 @@ const Index = () => {
               </form>
               
               <div className="mt-6 text-center">
-                <p className="text-sm text-gray-600">
+                <p className={`text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}>
                   {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
                   <button 
                     type="button"
                     onClick={toggleMode}
-                    className="text-spa-600 hover:text-spa-800 font-medium transition-colors"
+                    className={`${isDarkMode 
+                      ? "text-spa-300 hover:text-spa-200" 
+                      : "text-spa-600 hover:text-spa-800"} font-medium transition-colors`}
                   >
                     {isSignUp ? 'Sign In' : 'Create account'}
                   </button>
@@ -367,7 +385,7 @@ const Index = () => {
             </div>
           </motion.div>
           
-          <p className="text-center text-xs text-gray-500 mt-8">
+          <p className={`text-center text-xs ${isDarkMode ? "text-gray-400" : "text-gray-500"} mt-8`}>
             © 2023 Sails Patient Assistant. All rights reserved.
           </p>
         </div>
@@ -375,38 +393,42 @@ const Index = () => {
 
       {/* Forgot Password Dialog */}
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={`sm:max-w-[425px] ${isDarkMode ? "bg-gray-800 text-white border-gray-700" : ""}`}>
           <DialogHeader>
-            <DialogTitle>Reset your password</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={isDarkMode ? "text-white" : ""}>Reset your password</DialogTitle>
+            <DialogDescription className={isDarkMode ? "text-gray-300" : ""}>
               Enter your email address and we'll send you a link to reset your password.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="space-y-2">
-              <label htmlFor="reset-email" className="text-sm font-medium">
+              <label htmlFor="reset-email" className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
                 Email address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Mail className="h-5 w-5 text-gray-400" />
+                  <Mail className={`h-5 w-5 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`} />
                 </div>
                 <Input
                   id="reset-email"
                   type="email"
                   value={resetEmail}
                   onChange={(e) => setResetEmail(e.target.value)}
-                  className="pl-10"
+                  className={`pl-10 ${isDarkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : ""}`}
                   placeholder="Enter your email"
                 />
               </div>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setForgotPasswordOpen(false)}>
+            <Button 
+              variant="outline" 
+              onClick={() => setForgotPasswordOpen(false)}
+              className={isDarkMode ? "bg-gray-700 text-white border-gray-600 hover:bg-gray-600" : ""}
+            >
               Cancel
             </Button>
-            <Button onClick={handleResetRequest}>
+            <Button onClick={handleResetRequest} className={isDarkMode ? "bg-spa-500 hover:bg-spa-600" : ""}>
               Send reset link
             </Button>
           </DialogFooter>
@@ -415,16 +437,16 @@ const Index = () => {
 
       {/* Reset Password Dialog */}
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className={`sm:max-w-[425px] ${isDarkMode ? "bg-gray-800 text-white border-gray-700" : ""}`}>
           <DialogHeader>
-            <DialogTitle>Create new password</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className={isDarkMode ? "text-white" : ""}>Create new password</DialogTitle>
+            <DialogDescription className={isDarkMode ? "text-gray-300" : ""}>
               Please enter your new password below.
             </DialogDescription>
           </DialogHeader>
           {resetSuccess ? (
-            <Alert className="bg-green-50 border-green-200">
-              <AlertDescription className="text-green-700">
+            <Alert className={isDarkMode ? "bg-green-900/30 border-green-800 text-green-100" : "bg-green-50 border-green-200"}>
+              <AlertDescription className={isDarkMode ? "text-green-100" : "text-green-700"}>
                 Password reset successful! You can now log in with your new password.
               </AlertDescription>
             </Alert>
@@ -432,47 +454,51 @@ const Index = () => {
             <>
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
-                  <label htmlFor="new-password" className="text-sm font-medium">
+                  <label htmlFor="new-password" className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
                     New password
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                      <Lock className={`h-5 w-5 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`} />
                     </div>
                     <Input
                       id="new-password"
                       type="password"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      className="pl-10"
+                      className={`pl-10 ${isDarkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : ""}`}
                       placeholder="Enter new password"
                     />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="confirm-password" className="text-sm font-medium">
+                  <label htmlFor="confirm-password" className={`text-sm font-medium ${isDarkMode ? "text-gray-200" : ""}`}>
                     Confirm password
                   </label>
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                      <Lock className="h-5 w-5 text-gray-400" />
+                      <Lock className={`h-5 w-5 ${isDarkMode ? "text-gray-400" : "text-gray-400"}`} />
                     </div>
                     <Input
                       id="confirm-password"
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10"
+                      className={`pl-10 ${isDarkMode ? "bg-gray-700 border-gray-600 text-white placeholder-gray-400" : ""}`}
                       placeholder="Confirm new password"
                     />
                   </div>
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setResetPasswordOpen(false)}>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setResetPasswordOpen(false)}
+                  className={isDarkMode ? "bg-gray-700 text-white border-gray-600 hover:bg-gray-600" : ""}
+                >
                   Cancel
                 </Button>
-                <Button onClick={handlePasswordReset}>
+                <Button onClick={handlePasswordReset} className={isDarkMode ? "bg-spa-500 hover:bg-spa-600" : ""}>
                   Reset password
                 </Button>
               </DialogFooter>
