@@ -18,6 +18,8 @@ import { Switch } from "@/components/ui/switch";
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import MedicationDetails from '@/components/MedicationDetails';
+import VoiceAssistant from '@/components/VoiceAssistant';
+import EditableProfile from '@/components/EditableProfile';
 
 const SimpleDashboardView = () => {
   return (
@@ -32,33 +34,15 @@ const SimpleDashboardView = () => {
   );
 };
 
-const ProfilePage = () => (
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4 dark:text-white">My Profile</h2>
-    <div className="space-y-4">
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500 dark:text-gray-400">Full Name</span>
-        <span className="font-medium dark:text-white">Nilima</span>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500 dark:text-gray-400">Email</span>
-        <span className="font-medium dark:text-white">nilima.v9@gmail.com</span>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500 dark:text-gray-400">Date of Birth</span>
-        <span className="font-medium dark:text-white">09 January 1993</span>
-      </div>
-      <div className="flex flex-col gap-1">
-        <span className="text-sm text-gray-500 dark:text-gray-400">Phone</span>
-        <span className="font-medium dark:text-white">+1 (555) 123-4567</span>
-      </div>
-    </div>
-  </div>
-);
-
 const ChatPage = () => (
   <div className="h-[calc(100vh-12rem)]">
     <ChatInterface className="h-full" />
+  </div>
+);
+
+const VoiceAssistantPage = () => (
+  <div className="h-[calc(100vh-12rem)]">
+    <VoiceAssistant className="h-full" />
   </div>
 );
 
@@ -273,6 +257,7 @@ const Dashboard = () => {
     const path = location.pathname;
     if (path === '/dashboard') return 'Dashboard';
     if (path === '/dashboard/chat') return 'Chat Assistant';
+    if (path === '/dashboard/voice') return 'Voice Assistant';
     if (path === '/dashboard/profile') return 'My Profile';
     if (path === '/dashboard/appointments') return 'Appointments';
     if (path === '/dashboard/medications') return 'Medications';
@@ -378,7 +363,8 @@ const Dashboard = () => {
             <Routes>
               <Route path="/" element={<SimpleDashboardView />} />
               <Route path="/chat" element={<ChatPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/voice" element={<VoiceAssistantPage />} />
+              <Route path="/profile" element={<EditableProfile />} />
               <Route path="/appointments" element={<AppointmentsPage />} />
               <Route path="/medications" element={<MedicationsPage />} />
               <Route path="/records" element={<RecordsPage />} />

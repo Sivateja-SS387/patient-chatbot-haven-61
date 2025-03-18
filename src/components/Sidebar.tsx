@@ -11,10 +11,10 @@ import {
   ChevronLeft, 
   ChevronRight,
   LogOut,
-  PanelLeft,
   Heart,
   FileText,
-  CalendarClock
+  CalendarClock,
+  Volume2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -33,6 +33,7 @@ const Sidebar = ({ className }: SidebarProps) => {
   const navItems = [
     { name: 'Dashboard', icon: Home, path: '/dashboard', description: 'View your health overview' },
     { name: 'Chat Assistant', icon: MessageSquare, path: '/dashboard/chat', description: 'Interact with your health assistant' },
+    { name: 'Voice Assistant', icon: Volume2, path: '/dashboard/voice', description: 'Speak with your health assistant' },
     { name: 'My Profile', icon: User, path: '/dashboard/profile', description: 'Manage your profile information' },
     { name: 'Appointments', icon: CalendarClock, path: '/dashboard/appointments', description: 'Schedule and view appointments' },
     { name: 'Medications', icon: Heart, path: '/dashboard/medications', description: 'Manage your medications' },
