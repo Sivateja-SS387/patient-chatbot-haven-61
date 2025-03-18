@@ -7,6 +7,8 @@ import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import NotFound from "./pages/NotFound";
+import { ThemeProvider } from "./contexts/ThemeContext";
+import { NotificationsProvider } from "./contexts/NotificationsContext";
 
 // Import framer-motion
 import { AnimatePresence } from "framer-motion";
@@ -27,17 +29,21 @@ const AnimationWrapper = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AnimationWrapper>
-          <Route path="/" element={<Index />} />
-          <Route path="/dashboard/*" element={<Dashboard />} />
-          <Route path="*" element={<NotFound />} />
-        </AnimationWrapper>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <NotificationsProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AnimationWrapper>
+              <Route path="/" element={<Index />} />
+              <Route path="/dashboard/*" element={<Dashboard />} />
+              <Route path="*" element={<NotFound />} />
+            </AnimationWrapper>
+          </BrowserRouter>
+        </TooltipProvider>
+      </NotificationsProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

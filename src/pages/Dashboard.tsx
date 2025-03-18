@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
@@ -14,8 +13,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { useTheme } from '@/contexts/ThemeContext';
+import { useNotifications } from '@/contexts/NotificationsContext';
 
-// Create components for each dashboard section
 const DashboardHome = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -95,21 +96,34 @@ const InformationPage = () => (
   </div>
 );
 
-const SettingsPage = () => (
-  <div className="bg-white p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4">Settings</h2>
-    <div className="space-y-4">
-      <div className="flex items-center justify-between p-4 border rounded-lg">
-        <span>Dark Mode</span>
-        <button className="px-3 py-1 bg-gray-200 rounded-md">Off</button>
-      </div>
-      <div className="flex items-center justify-between p-4 border rounded-lg">
-        <span>Notifications</span>
-        <button className="px-3 py-1 bg-gray-200 rounded-md">On</button>
+const SettingsPage = () => {
+  const { isDarkMode, toggleDarkMode } = useTheme();
+  const { notificationsEnabled, toggleNotifications } = useNotifications();
+  
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+      <h2 className="text-2xl font-semibold mb-4 dark:text-white">Settings</h2>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-700">
+          <span className="dark:text-white">Dark Mode</span>
+          <Switch 
+            checked={isDarkMode} 
+            onCheckedChange={toggleDarkMode}
+            aria-label="Toggle dark mode"
+          />
+        </div>
+        <div className="flex items-center justify-between p-4 border rounded-lg dark:border-gray-700">
+          <span className="dark:text-white">Notifications</span>
+          <Switch 
+            checked={notificationsEnabled} 
+            onCheckedChange={toggleNotifications}
+            aria-label="Toggle notifications"
+          />
+        </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const Dashboard = () => {
   const [greeting, setGreeting] = useState('');
@@ -118,6 +132,8 @@ const Dashboard = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const { isDarkMode } = useTheme();
+  const { notificationsEnabled } = useNotifications();
   
   // Sample notifications data
   const notifications = [
@@ -186,7 +202,6 @@ const Dashboard = () => {
     },
   };
 
-  // Function to get the current section title
   const getCurrentSectionTitle = () => {
     const path = location.pathname;
     if (path === '/dashboard') return 'Dashboard';
@@ -201,65 +216,67 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden">
+    <div className={cn("h-screen flex overflow-hidden", isDarkMode && "dark")}>
       <Sidebar />
       
       <div className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-16 border-b bg-white flex items-center justify-between px-6 shrink-0">
+        <header className="h-16 border-b bg-white dark:bg-gray-800 dark:border-gray-700 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
                 placeholder="Search..."
-                className="pl-9 pr-4 py-2 rounded-lg bg-gray-50 border-gray-200 border text-sm focus:ring-2 focus:ring-spa-500 focus:border-transparent w-64 transition-all duration-200"
+                className="pl-9 pr-4 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 border text-sm focus:ring-2 focus:ring-spa-500 focus:border-transparent w-64 transition-all duration-200 dark:text-white"
               />
             </div>
           </div>
           
           <div className="flex items-center gap-3">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button className="p-2 rounded-full hover:bg-gray-100 relative" aria-label="Notifications">
-                  <Bell className="h-5 w-5 text-gray-600" />
-                  <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-spa-500"></span>
-                </button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 p-0" align="end">
-                <div className="p-4 border-b">
-                  <h3 className="font-medium">Notifications</h3>
-                </div>
-                <div className="max-h-96 overflow-auto divide-y">
-                  {notifications.map((notification) => (
-                    <div 
-                      key={notification.id} 
-                      className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
-                      onClick={() => handleNotificationClick(notification.id)}
-                    >
-                      <div className="flex justify-between items-start mb-1">
-                        <h4 className="font-medium text-sm">{notification.title}</h4>
-                        <span className="text-xs text-gray-500">{notification.time}</span>
-                      </div>
-                      <p className="text-sm text-gray-600">{notification.message}</p>
-                    </div>
-                  ))}
-                </div>
-                {notifications.length === 0 && (
-                  <div className="p-4 text-center text-gray-500">
-                    No new notifications
+            {notificationsEnabled && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 relative" aria-label="Notifications">
+                    <Bell className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+                    <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-spa-500"></span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-0 dark:bg-gray-800 dark:border-gray-700" align="end">
+                  <div className="p-4 border-b dark:border-gray-700">
+                    <h3 className="font-medium dark:text-white">Notifications</h3>
                   </div>
-                )}
-              </PopoverContent>
-            </Popover>
+                  <div className="max-h-96 overflow-auto divide-y dark:divide-gray-700">
+                    {notifications.map((notification) => (
+                      <div 
+                        key={notification.id} 
+                        className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
+                        onClick={() => handleNotificationClick(notification.id)}
+                      >
+                        <div className="flex justify-between items-start mb-1">
+                          <h4 className="font-medium text-sm dark:text-white">{notification.title}</h4>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{notification.time}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">{notification.message}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {notifications.length === 0 && (
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                      No new notifications
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
+            )}
             <div className="flex items-center">
-              <div className="h-8 w-8 rounded-full bg-spa-100 flex items-center justify-center mr-2">
-                <User className="h-4 w-4 text-spa-600" />
+              <div className="h-8 w-8 rounded-full bg-spa-100 dark:bg-spa-800 flex items-center justify-center mr-2">
+                <User className="h-4 w-4 text-spa-600 dark:text-spa-200" />
               </div>
-              <span className="text-sm font-medium">{userName}</span>
+              <span className="text-sm font-medium dark:text-white">{userName}</span>
             </div>
             <button 
               onClick={handleLogout} 
-              className="p-2 rounded-full hover:bg-red-50 hover:text-red-500 text-gray-600 transition-colors"
+              className="p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-900 hover:text-red-500 text-gray-600 dark:text-gray-300 transition-colors"
               title="Logout"
             >
               <LogOut className="h-5 w-5" />
@@ -267,7 +284,7 @@ const Dashboard = () => {
           </div>
         </header>
         
-        <main className="flex-1 overflow-auto bg-gray-50 p-6">
+        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-900 p-6">
           <motion.div
             className="max-w-7xl mx-auto"
             variants={containerVariants}
@@ -275,8 +292,8 @@ const Dashboard = () => {
             animate="visible"
           >
             <motion.div variants={itemVariants} className="mb-6">
-              <h1 className="text-2xl font-semibold text-gray-800">{greeting}, {userName}</h1>
-              <p className="text-gray-500">{getCurrentSectionTitle()}</p>
+              <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">{greeting}, {userName}</h1>
+              <p className="text-gray-500 dark:text-gray-400">{getCurrentSectionTitle()}</p>
             </motion.div>
             
             <Routes>
