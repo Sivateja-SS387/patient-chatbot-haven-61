@@ -1,14 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Lock, User, ChevronRight, Heart, Mail } from 'lucide-react';
+import { Lock, User, ChevronRight, Heart, Mail, Sun, Moon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useTheme } from '@/contexts/ThemeContext';
+import { Toggle } from '@/components/ui/toggle';
 
 const Index = () => {
   const [username, setUsername] = useState('');
@@ -19,7 +19,7 @@ const Index = () => {
   const [name, setName] = useState('');
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   
   // Forgot password states
   const [resetEmail, setResetEmail] = useState('');
@@ -218,7 +218,7 @@ const Index = () => {
         animate="animate"
       />
       
-      <header className="py-6 px-8">
+      <header className="py-6 px-8 flex justify-between items-center">
         <div className="flex items-center">
           <Heart className={isDarkMode ? "text-spa-300 mr-2" : "text-spa-500 mr-2"} size={24} />
           <span className={isDarkMode 
@@ -227,6 +227,17 @@ const Index = () => {
             Sails Patient Assistant
           </span>
         </div>
+        <Toggle 
+          aria-label="Toggle dark mode" 
+          className={`p-2 rounded-full ${isDarkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-white hover:bg-gray-100"}`}
+          onClick={toggleDarkMode}
+        >
+          {isDarkMode ? (
+            <Sun className="h-5 w-5 text-yellow-300" />
+          ) : (
+            <Moon className="h-5 w-5 text-spa-600" />
+          )}
+        </Toggle>
       </header>
       
       <main className="flex-1 flex items-center justify-center px-4">
