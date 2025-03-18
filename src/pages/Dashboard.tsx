@@ -3,11 +3,12 @@ import { motion } from 'framer-motion';
 import { useNavigate, useLocation, Routes, Route } from 'react-router-dom';
 import Sidebar from '@/components/Sidebar';
 import ChatInterface from '@/components/ChatInterface';
-import VoiceBot from '@/components/VoiceBot';
 import PatientInfo from '@/components/PatientInfo';
-import { Bell, Search, User, LogOut } from 'lucide-react';
+import DashboardHome from '@/components/DashboardHome';
+import { Bell, Search, User, LogOut, Sun, Moon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Toggle } from '@/components/ui/toggle';
 import { 
   Popover,
   PopoverContent,
@@ -16,6 +17,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
+import MedicationDetails from '@/components/MedicationDetails';
 
 const DashboardHome = () => {
   return (
@@ -25,7 +27,6 @@ const DashboardHome = () => {
       </div>
       <div className="space-y-6">
         <PatientInfo />
-        <VoiceBot />
       </div>
     </div>
   );
@@ -68,18 +69,89 @@ const AppointmentsPage = () => (
   </div>
 );
 
-const MedicationsPage = () => (
-  <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
-    <h2 className="text-2xl font-semibold mb-4 dark:text-white">My Medications</h2>
-    <div className="space-y-4">
-      {['Lisinopril', 'Metformin', 'Aspirin'].map((med, index) => (
-        <div key={index} className="p-4 border dark:border-gray-700 rounded-lg dark:text-white">
-          <h3 className="font-medium">{med}</h3>
-        </div>
-      ))}
+const MedicationsPage = () => {
+  const { isDarkMode } = useTheme();
+  const [selectedMedication, setSelectedMedication] = useState<any>(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  
+  const medications = [
+    {
+      name: 'Lisinopril',
+      dosage: '10mg',
+      frequency: 'Once daily in the morning',
+      purpose: 'Treats high blood pressure and heart failure',
+      sideEffects: ['Dizziness', 'Headache', 'Dry cough', 'Fatigue'],
+      instructions: 'Take with or without food at the same time each day',
+      nextRefill: 'June 25, 2023'
+    },
+    {
+      name: 'Metformin',
+      dosage: '500mg',
+      frequency: 'Twice daily with meals',
+      purpose: 'Controls blood sugar levels for type 2 diabetes',
+      sideEffects: ['Nausea', 'Stomach upset', 'Diarrhea', 'Metallic taste'],
+      instructions: 'Take with food to reduce stomach upset',
+      nextRefill: 'July 10, 2023'
+    },
+    {
+      name: 'Aspirin',
+      dosage: '81mg',
+      frequency: 'Once daily',
+      purpose: 'Prevents blood clots and reduces heart attack risk',
+      sideEffects: ['Stomach irritation', 'Nausea', 'Heartburn', 'Easy bruising'],
+      instructions: 'Take with food to minimize stomach irritation',
+      nextRefill: 'August 5, 2023'
+    }
+  ];
+
+  const handleMedicationClick = (medication: any) => {
+    setSelectedMedication(medication);
+    setDetailsOpen(true);
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
+      <h2 className="text-2xl font-semibold mb-4 dark:text-white">My Medications</h2>
+      <div className="space-y-4">
+        {medications.map((med, index) => (
+          <div 
+            key={index} 
+            className={cn(
+              "p-4 border rounded-lg cursor-pointer transition-colors",
+              isDarkMode 
+                ? "dark:border-gray-700 dark:text-white hover:bg-gray-700" 
+                : "hover:bg-gray-50"
+            )}
+            onClick={() => handleMedicationClick(med)}
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <h3 className="font-medium">{med.name}</h3>
+                <p className={cn("text-sm", isDarkMode ? "text-gray-400" : "text-gray-500")}>
+                  {med.dosage} - {med.frequency}
+                </p>
+              </div>
+              <span className={cn(
+                "text-xs px-2 py-1 rounded-full",
+                isDarkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"
+              )}>
+                Active
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {selectedMedication && (
+        <MedicationDetails 
+          open={detailsOpen} 
+          onOpenChange={setDetailsOpen} 
+          medication={selectedMedication} 
+        />
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 const RecordsPage = () => (
   <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm">
@@ -128,14 +200,12 @@ const SettingsPage = () => {
 const Dashboard = () => {
   const [greeting, setGreeting] = useState('');
   const [userName, setUserName] = useState('');
-  const [showNotifications, setShowNotifications] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  const { isDarkMode } = useTheme();
+  const { isDarkMode, toggleDarkMode } = useTheme();
   const { notificationsEnabled } = useNotifications();
   
-  // Sample notifications data
   const notifications = [
     { id: 1, title: "Appointment Reminder", message: "You have a doctor's appointment tomorrow at 10:00 AM", time: "1 hour ago" },
     { id: 2, title: "Medication Alert", message: "Time to take your evening medication", time: "3 hours ago" },
@@ -143,7 +213,6 @@ const Dashboard = () => {
   ];
   
   useEffect(() => {
-    // Get the time-appropriate greeting
     const hour = new Date().getHours();
     let newGreeting = 'Good evening';
     
@@ -155,7 +224,6 @@ const Dashboard = () => {
     
     setGreeting(newGreeting);
     
-    // Get user info from localStorage
     const userData = localStorage.getItem('user');
     if (!userData) {
       navigate('/');
@@ -180,7 +248,6 @@ const Dashboard = () => {
       title: "Notification viewed",
       description: "You've opened notification #" + id,
     });
-    setShowNotifications(false);
   };
   
   const containerVariants = {
@@ -223,7 +290,7 @@ const Dashboard = () => {
         <header className="h-16 border-b bg-white dark:bg-gray-800 dark:border-gray-700 flex items-center justify-between px-6 shrink-0">
           <div className="flex items-center gap-4">
             <div className="relative">
-              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Search..."
@@ -233,6 +300,18 @@ const Dashboard = () => {
           </div>
           
           <div className="flex items-center gap-3">
+            <Toggle 
+              aria-label="Toggle dark mode"
+              pressed={isDarkMode}
+              onPressedChange={toggleDarkMode}
+              className={cn(
+                "p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700",
+                isDarkMode ? "bg-gray-800 text-yellow-300" : "bg-white text-gray-600"
+              )}
+            >
+              {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+            </Toggle>
+            
             {notificationsEnabled && (
               <Popover>
                 <PopoverTrigger asChild>
