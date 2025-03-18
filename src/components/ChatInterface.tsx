@@ -118,7 +118,12 @@ const ChatInterface = ({ className }: ChatInterfaceProps) => {
           <Bot size={20} className={isDarkMode ? "text-spa-300" : "text-spa-600"} />
           <h2 className={isDarkMode ? "font-semibold text-white" : "font-semibold text-spa-900"}>Sails Patient Assistant</h2>
         </div>
-        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+        <span className={cn(
+          "px-2 py-1 text-xs rounded-full",
+          isDarkMode 
+            ? "bg-green-900 text-green-100" 
+            : "bg-green-100 text-green-800"
+        )}>
           Active
         </span>
       </div>
