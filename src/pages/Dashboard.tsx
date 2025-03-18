@@ -19,7 +19,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useNotifications } from '@/contexts/NotificationsContext';
 import MedicationDetails from '@/components/MedicationDetails';
 
-const DashboardHome = () => {
+const SimpleDashboardView = () => {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2">
@@ -376,7 +376,7 @@ const Dashboard = () => {
             </motion.div>
             
             <Routes>
-              <Route path="/" element={<DashboardHome />} />
+              <Route path="/" element={<SimpleDashboardView />} />
               <Route path="/chat" element={<ChatPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/appointments" element={<AppointmentsPage />} />
