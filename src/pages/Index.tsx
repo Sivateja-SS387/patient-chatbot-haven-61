@@ -21,7 +21,6 @@ const Index = () => {
   const { toast } = useToast();
   const { isDarkMode, toggleDarkMode } = useTheme();
   
-  // Forgot password states
   const [resetEmail, setResetEmail] = useState('');
   const [forgotPasswordOpen, setForgotPasswordOpen] = useState(false);
   const [resetPasswordOpen, setResetPasswordOpen] = useState(false);
@@ -30,10 +29,15 @@ const Index = () => {
   const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
-    // Check if user is already logged in
     const loggedInUser = localStorage.getItem('user');
     if (loggedInUser) {
-      navigate('/dashboard');
+      const userData = JSON.parse(loggedInUser);
+      
+      if (userData.hasCompletedOnboarding) {
+        navigate('/dashboard');
+      } else {
+        navigate('/user-details');
+      }
     }
   }, [navigate]);
 
@@ -54,33 +58,31 @@ const Index = () => {
     setIsLoading(true);
     
     if (isSignUp) {
-      // Create a new account
       setTimeout(() => {
-        // Store user info in localStorage
         const userData = {
           email: username,
           name: name,
+          hasCompletedOnboarding: false,
         };
         localStorage.setItem('user', JSON.stringify(userData));
-        localStorage.setItem(username, password); // Simple password storage (not secure)
+        localStorage.setItem(username, password);
         
         setIsLoading(false);
         toast({
           title: "Account created successfully",
-          description: `Welcome, ${name}!`,
+          description: `Welcome, ${name}! Please complete your profile.`,
         });
-        navigate('/dashboard');
+        navigate('/user-details');
       }, 1000);
     } else {
-      // Check login credentials
       setTimeout(() => {
         setIsLoading(false);
 
-        // Check if this is the hardcoded user
         if (username === 'nilima.v9@gmail.com' && password === 'Aradhya@01') {
           const userData = {
             email: username,
             name: 'Nilima',
+            hasCompletedOnboarding: true,
           };
           localStorage.setItem('user', JSON.stringify(userData));
           toast({
@@ -91,7 +93,6 @@ const Index = () => {
           return;
         }
 
-        // For other users, check localStorage
         const storedPassword = localStorage.getItem(username);
         
         if (storedPassword === password) {
@@ -100,14 +101,19 @@ const Index = () => {
             title: "Login successful",
             description: `Welcome back, ${userData.name}!`,
           });
-          navigate('/dashboard');
+          
+          if (userData.hasCompletedOnboarding) {
+            navigate('/dashboard');
+          } else {
+            navigate('/user-details');
+          }
         } else {
           setError('Invalid email or password');
         }
       }, 1000);
     }
   };
-  
+
   const handleForgotPassword = () => {
     setForgotPasswordOpen(true);
   };
@@ -122,7 +128,6 @@ const Index = () => {
       return;
     }
 
-    // First check if the email exists in our system
     const isHardcodedUser = resetEmail === 'nilima.v9@gmail.com';
     const isRegisteredUser = localStorage.getItem(resetEmail) !== null;
 
@@ -135,7 +140,6 @@ const Index = () => {
       return;
     }
 
-    // Close the first dialog and open the second for password reset
     setForgotPasswordOpen(false);
     setResetPasswordOpen(true);
     toast({
@@ -163,9 +167,7 @@ const Index = () => {
       return;
     }
 
-    // Update the password in localStorage
     if (resetEmail === 'nilima.v9@gmail.com') {
-      // Update the hardcoded password logic if needed
       toast({
         title: "Success",
         description: "Your password has been updated. Please sign in with your new password.",
@@ -187,7 +189,7 @@ const Index = () => {
       setResetEmail('');
     }, 2000);
   };
-  
+
   const backgroundVariants = {
     initial: {
       backgroundPosition: '0% 0%',
@@ -402,7 +404,6 @@ const Index = () => {
         </div>
       </main>
 
-      {/* Forgot Password Dialog */}
       <Dialog open={forgotPasswordOpen} onOpenChange={setForgotPasswordOpen}>
         <DialogContent className={`sm:max-w-[425px] ${isDarkMode ? "bg-gray-800 text-white border-gray-700" : ""}`}>
           <DialogHeader>
@@ -446,7 +447,6 @@ const Index = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Reset Password Dialog */}
       <Dialog open={resetPasswordOpen} onOpenChange={setResetPasswordOpen}>
         <DialogContent className={`sm:max-w-[425px] ${isDarkMode ? "bg-gray-800 text-white border-gray-700" : ""}`}>
           <DialogHeader>
