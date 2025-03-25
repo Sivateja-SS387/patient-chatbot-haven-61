@@ -34,8 +34,8 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const [transcript, setTranscript] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const silenceTimeoutRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const silenceTimeoutRef = useRef<number | null>(null);
 
   const demoQueries = [
     "What medications do I need to take today?",
@@ -51,8 +51,8 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   useEffect(() => {
     // Initialize Web Speech API
     if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
+      const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognitionAPI();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
       
@@ -60,7 +60,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
         setIsListening(true);
       };
       
-      recognitionRef.current.onresult = (event: any) => {
+      recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
         const current = event.resultIndex;
         const result = event.results[current];
         const transcriptValue = result[0].transcript;
@@ -68,12 +68,15 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
         setTranscript(transcriptValue);
         
         // Reset silence timeout whenever we get a result
-        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+        if (silenceTimeoutRef.current) {
+          window.clearTimeout(silenceTimeoutRef.current);
+          silenceTimeoutRef.current = null;
+        }
         
         // If this is a final result (user paused speaking)
         if (result.isFinal) {
           // Set a timeout to detect silence (user stopped speaking)
-          silenceTimeoutRef.current = setTimeout(() => {
+          silenceTimeoutRef.current = window.setTimeout(() => {
             if (transcriptValue.trim().length > 0) {
               processVoiceInput(transcriptValue);
             }
@@ -81,7 +84,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
         }
       };
       
-      recognitionRef.current.onerror = (event: any) => {
+      recognitionRef.current.onerror = (event: SpeechRecognitionError) => {
         console.error('Speech recognition error', event.error);
         if (event.error === 'no-speech') {
           // Restart recognition if no speech detected
@@ -123,7 +126,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
         recognitionRef.current.abort();
       }
       if (silenceTimeoutRef.current) {
-        clearTimeout(silenceTimeoutRef.current);
+        window.clearTimeout(silenceTimeoutRef.current);
       }
     };
   }, [toast]);
