@@ -1,9 +1,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Volume2, Bot, User } from 'lucide-react';
+import { Volume2, Bot, User, Mic, MicOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/hooks/use-toast';
 
 type Message = {
   id: string;
@@ -18,6 +19,7 @@ type VoiceAssistantProps = {
 
 const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const { isDarkMode } = useTheme();
+  const { toast } = useToast();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
@@ -26,11 +28,14 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       timestamp: new Date(),
     },
   ]);
-  const [isRecording, setIsRecording] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const recognitionRef = useRef<any>(null);
+  const silenceTimeoutRef = useRef<any>(null);
 
   const demoQueries = [
     "What medications do I need to take today?",
@@ -43,92 +48,167 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     scrollToBottom();
   }, [messages]);
 
+  useEffect(() => {
+    // Initialize Web Speech API
+    if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      
+      recognitionRef.current.onstart = () => {
+        setIsListening(true);
+      };
+      
+      recognitionRef.current.onresult = (event: any) => {
+        const current = event.resultIndex;
+        const result = event.results[current];
+        const transcriptValue = result[0].transcript;
+        
+        setTranscript(transcriptValue);
+        
+        // Reset silence timeout whenever we get a result
+        if (silenceTimeoutRef.current) clearTimeout(silenceTimeoutRef.current);
+        
+        // If this is a final result (user paused speaking)
+        if (result.isFinal) {
+          // Set a timeout to detect silence (user stopped speaking)
+          silenceTimeoutRef.current = setTimeout(() => {
+            if (transcriptValue.trim().length > 0) {
+              processVoiceInput(transcriptValue);
+            }
+          }, 1500); // 1.5 seconds of silence before sending
+        }
+      };
+      
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        if (event.error === 'no-speech') {
+          // Restart recognition if no speech detected
+          restartSpeechRecognition();
+        } else {
+          setIsListening(false);
+          setIsSpeechEnabled(false);
+          toast({
+            title: "Speech Recognition Error",
+            description: `Error: ${event.error}. Please try again.`,
+            variant: "destructive"
+          });
+        }
+      };
+      
+      recognitionRef.current.onend = () => {
+        // Auto restart recognition if it ends and isSpeechEnabled is true
+        if (isSpeechEnabled) {
+          restartSpeechRecognition();
+        } else {
+          setIsListening(false);
+        }
+      };
+      
+      // Start recognition on component mount
+      startSpeechRecognition();
+    } else {
+      setIsSpeechEnabled(false);
+      toast({
+        title: "Speech Recognition Not Supported",
+        description: "Your browser doesn't support speech recognition. Try using Chrome.",
+        variant: "destructive"
+      });
+    }
+    
+    // Cleanup
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+      if (silenceTimeoutRef.current) {
+        clearTimeout(silenceTimeoutRef.current);
+      }
+    };
+  }, [toast]);
+
+  const startSpeechRecognition = () => {
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+      }
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error);
+    }
+  };
+
+  const restartSpeechRecognition = () => {
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+        setTimeout(() => {
+          recognitionRef.current.start();
+        }, 200);
+      }
+    } catch (error) {
+      console.error('Failed to restart speech recognition:', error);
+    }
+  };
+
+  const toggleSpeechRecognition = () => {
+    if (isListening) {
+      recognitionRef.current?.abort();
+      setIsListening(false);
+      setIsSpeechEnabled(false);
+    } else {
+      setIsSpeechEnabled(true);
+      startSpeechRecognition();
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const handleVoiceInput = () => {
-    if (isRecording) {
-      // Stop recording
-      setIsRecording(false);
-      setIsProcessing(true);
-      
-      // Simulate voice processing after a delay
-      setTimeout(() => {
-        setIsProcessing(false);
-        const userQuery = "What are the side effects of Lisinopril?";
-        
-        // Add user message
-        const newUserMessage: Message = {
-          id: `user-${Date.now()}`,
-          text: userQuery,
-          sender: 'user',
-          timestamp: new Date(),
-        };
-        
-        setMessages((prev) => [...prev, newUserMessage]);
-        
-        // Simulate bot response after a delay
-        setTimeout(() => {
-          const botResponse: Message = {
-            id: `bot-${Date.now()}`,
-            text: "Common side effects of Lisinopril may include dizziness, headache, fatigue, and dry cough. Serious side effects can include swelling of face/lips/tongue, difficulty breathing, or irregular heartbeat. Contact your doctor if you experience any severe symptoms.",
-            sender: 'bot',
-            timestamp: new Date(),
-          };
-          
-          setMessages((prev) => [...prev, botResponse]);
-        }, 1500);
-      }, 2000);
-    } else {
-      // Start recording
-      setIsRecording(true);
-      setTranscript('');
-    }
-  };
-
-  const selectDemoQuery = (query: string) => {
-    // Simulate voice input with selected query
-    setIsRecording(false);
+  const processVoiceInput = (inputText: string) => {
     setIsProcessing(true);
+    setTranscript('');
     
+    // Add user message
+    const newUserMessage: Message = {
+      id: `user-${Date.now()}`,
+      text: inputText,
+      sender: 'user',
+      timestamp: new Date(),
+    };
+    
+    setMessages((prev) => [...prev, newUserMessage]);
+    
+    // Simulate bot response after a delay
     setTimeout(() => {
       setIsProcessing(false);
+      let botResponse = "I don't have specific information about that. Would you like me to find out more?";
       
-      // Add user message
-      const newUserMessage: Message = {
-        id: `user-${Date.now()}`,
-        text: query,
-        sender: 'user',
+      if (inputText.toLowerCase().includes("lisinopril")) {
+        botResponse = "Common side effects of Lisinopril may include dizziness, headache, fatigue, and dry cough. Serious side effects can include swelling of face/lips/tongue, difficulty breathing, or irregular heartbeat. Contact your doctor if you experience any severe symptoms.";
+      } else if (inputText.toLowerCase().includes("appointment")) {
+        botResponse = "Your next appointment is scheduled for June 15th at 10:30 AM with Dr. Johnson.";
+      } else if (inputText.toLowerCase().includes("medications")) {
+        botResponse = "Today you need to take Lisinopril (10mg) in the morning, Metformin (500mg) with breakfast and dinner, and Aspirin (81mg) once daily.";
+      } else if (inputText.toLowerCase().includes("doctor")) {
+        botResponse = "Your doctor advised to take all medications with food, increase water intake, and monitor your blood pressure daily. Report any readings above 140/90.";
+      }
+      
+      const newBotMessage: Message = {
+        id: `bot-${Date.now()}`,
+        text: botResponse,
+        sender: 'bot',
         timestamp: new Date(),
       };
       
-      setMessages((prev) => [...prev, newUserMessage]);
-      
-      // Simulate bot response after a delay
-      setTimeout(() => {
-        let botResponse = "I don't have specific information about that. Would you like me to find out more?";
-        
-        if (query.includes("Lisinopril")) {
-          botResponse = "Common side effects of Lisinopril may include dizziness, headache, fatigue, and dry cough. Serious side effects can include swelling of face/lips/tongue, difficulty breathing, or irregular heartbeat. Contact your doctor if you experience any severe symptoms.";
-        } else if (query.includes("appointment")) {
-          botResponse = "Your next appointment is scheduled for June 15th at 10:30 AM with Dr. Johnson.";
-        } else if (query.includes("medications")) {
-          botResponse = "Today you need to take Lisinopril (10mg) in the morning, Metformin (500mg) with breakfast and dinner, and Aspirin (81mg) once daily.";
-        } else if (query.includes("doctor")) {
-          botResponse = "Your doctor advised to take all medications with food, increase water intake, and monitor your blood pressure daily. Report any readings above 140/90.";
-        }
-        
-        const newBotMessage: Message = {
-          id: `bot-${Date.now()}`,
-          text: botResponse,
-          sender: 'bot',
-          timestamp: new Date(),
-        };
-        
-        setMessages((prev) => [...prev, newBotMessage]);
-      }, 1500);
+      setMessages((prev) => [...prev, newBotMessage]);
     }, 1000);
+  };
+
+  const selectDemoQuery = (query: string) => {
+    processVoiceInput(query);
   };
 
   return (
@@ -138,14 +218,27 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
           <Volume2 size={20} className={isDarkMode ? "text-spa-300" : "text-spa-600"} />
           <h2 className={isDarkMode ? "font-semibold text-white" : "font-semibold text-spa-900"}>Sails Voice Assistant</h2>
         </div>
-        <span className={cn(
-          "px-2 py-1 text-xs rounded-full",
-          isDarkMode 
-            ? "bg-green-900 text-green-100" 
-            : "bg-green-100 text-green-800"
-        )}>
-          Active
-        </span>
+        <div className="flex items-center gap-2">
+          <span className={cn(
+            "px-2 py-1 text-xs rounded-full",
+            isListening 
+              ? isDarkMode ? "bg-green-900 text-green-100" : "bg-green-100 text-green-800"
+              : isDarkMode ? "bg-gray-600 text-gray-300" : "bg-gray-200 text-gray-600"
+          )}>
+            {isListening ? "Listening" : "Not Listening"}
+          </span>
+          <button
+            onClick={toggleSpeechRecognition}
+            className={cn(
+              "p-1 rounded-full",
+              isListening 
+                ? isDarkMode ? "bg-red-900 text-red-100" : "bg-red-100 text-red-600"
+                : isDarkMode ? "bg-green-900 text-green-100" : "bg-green-100 text-green-600"
+            )}
+          >
+            {isListening ? <MicOff size={16} /> : <Mic size={16} />}
+          </button>
+        </div>
       </div>
 
       <div className={cn("flex-1 overflow-y-auto p-4 space-y-4", isDarkMode ? "bg-gray-800" : "")}>
@@ -239,32 +332,17 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
           </div>
         </div>
         
-        <div className="flex justify-center mt-4">
-          <button
-            onClick={handleVoiceInput}
-            className={cn(
-              "w-16 h-16 rounded-full flex items-center justify-center transition-all",
-              isRecording 
-                ? isDarkMode ? "bg-red-600 animate-pulse" : "bg-red-500 animate-pulse"
-                : isDarkMode ? "bg-spa-600 hover:bg-spa-500" : "bg-spa-500 hover:bg-spa-600", 
-              "text-white"
-            )}
-          >
-            {isRecording ? <MicOff size={24} /> : <Mic size={24} />}
-          </button>
-        </div>
-
-        {isRecording && (
+        {isListening && (
           <div className="mt-4 text-center">
-            <p className={cn("text-sm", isDarkMode ? "text-gray-300" : "text-gray-600")}>
-              Listening... {transcript || "Speak now"}
+            <p className={cn("text-sm font-medium", isDarkMode ? "text-gray-200" : "text-gray-700")}>
+              {transcript || "I'm listening..."}
             </p>
             <div className="flex justify-center gap-1 mt-2">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div 
                   key={i} 
                   className={cn(
-                    "w-1 h-5 rounded-full", 
+                    "w-1 rounded-full", 
                     isDarkMode ? "bg-spa-400" : "bg-spa-500"
                   )}
                   style={{ 
