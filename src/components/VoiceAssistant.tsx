@@ -1,10 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, Bot, User, Mic, MicOff } from 'lucide-react';
+import { Volume2, Bot, User, Mic, MicOff, VolumeX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
+import speechSynthesis from '@/utils/speechSynthesis';
 
 type Message = {
   id: string;
@@ -32,6 +33,9 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const [isSpeechEnabled, setIsSpeechEnabled] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(true);
+  const [restartAttempts, setRestartAttempts] = useState(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -49,6 +53,40 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Reset recognition state when component mounts
+  useEffect(() => {
+    isComponentMounted.current = true;
+    
+    // When the component loads for the first time
+    setTimeout(() => {
+      if (isComponentMounted.current) {
+        initializeSpeechRecognition();
+        
+        // Speak the welcome message
+        const welcomeMessage = messages[0].text;
+        if (audioEnabled) {
+          speakText(welcomeMessage);
+        }
+        
+        if (isSpeechEnabled) {
+          // Slight delay to ensure recognition starts properly
+          setTimeout(() => {
+            if (isComponentMounted.current) {
+              startSpeechRecognition();
+            }
+          }, 500);
+        }
+      }
+    }, 800);
+    
+    // Clean up function to properly handle all resources
+    return () => {
+      isComponentMounted.current = false;
+      cleanupResources();
+      speechSynthesis.stop();
+    };
+  }, []);
 
   // Clean up function to properly handle all resources
   const cleanupResources = () => {
@@ -74,6 +112,8 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       window.clearTimeout(startTimeoutRef.current);
       startTimeoutRef.current = null;
     }
+    
+    setRestartAttempts(0);
   };
 
   // Initialize speech recognition with proper event handlers
@@ -136,11 +176,34 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
               window.clearTimeout(startTimeoutRef.current);
             }
             
+            // Increment restart attempts counter
+            const currentAttempts = restartAttempts + 1;
+            setRestartAttempts(currentAttempts);
+            
+            // If we've tried too many times in succession, disable speech temporarily
+            if (currentAttempts > 5) {
+              console.log('Too many restart attempts, temporarily disabling speech recognition');
+              setIsListening(false);
+              
+              // After a longer delay, try again with reset counter
+              startTimeoutRef.current = window.setTimeout(() => {
+                if (isComponentMounted.current && isSpeechEnabled) {
+                  setRestartAttempts(0);
+                  initializeSpeechRecognition();
+                  startSpeechRecognition();
+                }
+              }, 3000);
+              return;
+            }
+            
+            // Adaptive delay: increase delay with more attempts
+            const adaptiveDelay = 300 + (currentAttempts * 200); 
+            
             startTimeoutRef.current = window.setTimeout(() => {
               if (isComponentMounted.current && isSpeechEnabled) {
                 startSpeechRecognition();
               }
-            }, 300);
+            }, adaptiveDelay);
           } else {
             setIsListening(false);
             setIsSpeechEnabled(false);
@@ -172,25 +235,6 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       });
     }
   };
-
-  useEffect(() => {
-    isComponentMounted.current = true;
-    
-    // Wait a small amount of time before initializing to ensure clean component mounting
-    startTimeoutRef.current = window.setTimeout(() => {
-      initializeSpeechRecognition();
-      
-      if (isSpeechEnabled) {
-        startSpeechRecognition();
-      }
-    }, 300);
-    
-    // Cleanup function
-    return () => {
-      isComponentMounted.current = false;
-      cleanupResources();
-    };
-  }, []);
 
   const startSpeechRecognition = () => {
     try {
@@ -312,6 +356,40 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     }
   };
 
+  const toggleAudio = () => {
+    const newAudioState = !audioEnabled;
+    setAudioEnabled(newAudioState);
+    
+    if (!newAudioState) {
+      // Stop any ongoing speech
+      speechSynthesis.stop();
+    } else {
+      // Notification that audio is enabled
+      toast({
+        title: "Voice Output Enabled",
+        description: "The assistant will now speak responses aloud.",
+      });
+    }
+  };
+
+  const speakText = async (text: string) => {
+    if (!audioEnabled) return;
+    
+    try {
+      setIsSpeaking(true);
+      await speechSynthesis.speak(text);
+    } catch (error) {
+      console.error('Speech synthesis error:', error);
+      toast({
+        title: "Speech Error",
+        description: "Unable to speak the response. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSpeaking(false);
+    }
+  };
+
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -353,6 +431,9 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       };
       
       setMessages((prev) => [...prev, newBotMessage]);
+      
+      // Speak the bot's response
+      speakText(botResponse);
     }, 1000);
   };
 
@@ -368,6 +449,18 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
           <h2 className={isDarkMode ? "font-semibold text-white" : "font-semibold text-spa-900"}>Sails Voice Assistant</h2>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={toggleAudio}
+            className={cn(
+              "p-1 rounded-full transition-colors",
+              audioEnabled
+                ? isDarkMode ? "bg-green-900 text-green-100" : "bg-green-100 text-green-800"
+                : isDarkMode ? "bg-gray-600 text-gray-300" : "bg-gray-200 text-gray-600"
+            )}
+            title={audioEnabled ? "Disable voice output" : "Enable voice output"}
+          >
+            {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
           <span className={cn(
             "px-2 py-1 text-xs rounded-full",
             isListening 
@@ -501,6 +594,17 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
                 ></div>
               ))}
             </div>
+          </div>
+        )}
+        
+        {isSpeaking && (
+          <div className="mt-2 text-center">
+            <p className={cn(
+              "inline-block px-3 py-1 rounded-full text-xs",
+              isDarkMode ? "bg-green-900 text-green-100" : "bg-green-100 text-green-800"
+            )}>
+              Speaking...
+            </p>
           </div>
         )}
       </div>
