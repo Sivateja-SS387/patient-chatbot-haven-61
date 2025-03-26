@@ -38,6 +38,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const [restartAttempts, setRestartAttempts] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [speechPaused, setSpeechPaused] = useState(false);
+  const [silenceDetected, setSilenceDetected] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
@@ -45,6 +46,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const isComponentMounted = useRef(false);
   const startTimeoutRef = useRef<number | null>(null);
   const recordingTimeoutRef = useRef<number | null>(null);
+  const autoProcessTimeoutRef = useRef<number | null>(null);
 
   const demoQueries = [
     "What medications do I need to take today?",
@@ -124,9 +126,15 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       recordingTimeoutRef.current = null;
     }
     
+    if (autoProcessTimeoutRef.current) {
+      window.clearTimeout(autoProcessTimeoutRef.current);
+      autoProcessTimeoutRef.current = null;
+    }
+    
     setRestartAttempts(0);
     setIsRecording(false);
     setSpeechPaused(false);
+    setSilenceDetected(false);
   };
 
   // Initialize speech recognition with proper event handlers
@@ -164,9 +172,9 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
             setTranscript(prev => prev + ' ' + transcriptValue);
           }
           
-          // If this is a final result and we're recording, process it
+          // If this is a final result and we're recording, set a silence timeout
           if (result.isFinal && isRecording) {
-            console.log('Final transcript received:', transcriptValue);
+            console.log('Final transcript received, starting silence detection:', transcriptValue);
             
             // Set a timeout to detect silence (user stopped speaking)
             if (silenceTimeoutRef.current) {
@@ -176,9 +184,14 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
             silenceTimeoutRef.current = window.setTimeout(() => {
               if (isComponentMounted.current && isRecording) {
                 console.log('Silence detected, processing transcript');
+                setSilenceDetected(true);
                 completeRecording();
               }
             }, 1800); // 1.8 seconds of silence before sending
+          } else if (!isRecording) {
+            // If we detect speech while not recording, start recording
+            console.log('Speech detected while not recording, starting recording');
+            startRecording();
           }
         };
         
@@ -366,6 +379,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     console.log('Starting recording');
     setIsRecording(true);
     setTranscript('');
+    setSilenceDetected(false);
     
     // Set a timeout to automatically end recording if it goes too long
     if (recordingTimeoutRef.current) {
@@ -395,10 +409,35 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     // Process the recorded transcript if it's not empty
     if (transcript.trim().length > 0) {
       processVoiceInput(transcript.trim());
+    } else {
+      // Restart speech recognition immediately if no transcript
+      setSilenceDetected(false);
+      resetSpeechRecognitionForNextInput();
     }
-    
-    // Clear the transcript for the next recording
+  };
+
+  const resetSpeechRecognitionForNextInput = () => {
+    // Clear transcript for the next recording
     setTranscript('');
+    
+    // Reset silence detection
+    setSilenceDetected(false);
+    
+    // Ensure we're ready for the next input by checking if speech synthesis is active
+    if (speechSynthesis.isPending()) {
+      // If speaking, register callback to restart listening when speaking is done
+      console.log('Speech is active, waiting for it to finish before restarting recognition');
+      speechSynthesis.onSpeechEnd(() => {
+        if (isComponentMounted.current && isSpeechEnabled) {
+          console.log('Speech ended, restarting recognition');
+          safeRestartSpeechRecognition();
+        }
+      });
+    } else {
+      // If not speaking, restart immediately
+      console.log('No speech active, restarting recognition immediately');
+      safeRestartSpeechRecognition();
+    }
   };
 
   const toggleSpeechRecognition = () => {
@@ -444,7 +483,11 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   };
 
   const speakText = async (text: string) => {
-    if (!audioEnabled) return;
+    if (!audioEnabled) {
+      // If audio is disabled, just reset for next input
+      resetSpeechRecognitionForNextInput();
+      return;
+    }
     
     try {
       setIsSpeaking(true);
@@ -457,16 +500,9 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       
       await speechSynthesis.speak(text);
       
-      // Resume listening after speaking
-      if (isSpeechEnabled && speechPaused) {
-        console.log('Resuming speech recognition after speaking');
-        setSpeechPaused(false);
-        startTimeoutRef.current = window.setTimeout(() => {
-          if (isComponentMounted.current && isSpeechEnabled) {
-            startSpeechRecognition();
-          }
-        }, 300);
-      }
+      // Resume listening after speaking is handled by the onSpeechEnd callback
+      setIsSpeaking(false);
+      resetSpeechRecognitionForNextInput();
     } catch (error) {
       console.error('Speech synthesis error:', error);
       toast({
@@ -476,16 +512,8 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       });
       
       // Make sure to resume recognition even if speaking fails
-      if (isSpeechEnabled && speechPaused) {
-        setSpeechPaused(false);
-        startTimeoutRef.current = window.setTimeout(() => {
-          if (isComponentMounted.current && isSpeechEnabled) {
-            startSpeechRecognition();
-          }
-        }, 300);
-      }
-    } finally {
       setIsSpeaking(false);
+      resetSpeechRecognitionForNextInput();
     }
   };
 
@@ -541,16 +569,23 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
 
   // Using useEffect to monitor voice activity and trigger recording
   useEffect(() => {
-    if (isListening && !isRecording && !isSpeaking && !speechPaused) {
-      // Start a short timeout to give a slight delay for voice detection
-      const detectionTimeout = setTimeout(() => {
-        // We're waiting for voice, so the next result should trigger recording
-        startRecording();
-      }, 300);
+    // This effect will now only watch for silence detection to auto-process
+    if (silenceDetected && isRecording) {
+      console.log('Silence detected while recording, auto-processing in 500ms');
       
-      return () => clearTimeout(detectionTimeout);
+      // Add a short delay to process after silence detected
+      if (autoProcessTimeoutRef.current) {
+        window.clearTimeout(autoProcessTimeoutRef.current);
+      }
+      
+      autoProcessTimeoutRef.current = window.setTimeout(() => {
+        if (isComponentMounted.current && isRecording && silenceDetected) {
+          console.log('Processing after silence detected');
+          completeRecording();
+        }
+      }, 500);
     }
-  }, [isListening, isRecording, isSpeaking, speechPaused]);
+  }, [silenceDetected, isRecording]);
 
   return (
     <div className={cn('flex flex-col h-full rounded-lg overflow-hidden', isDarkMode ? 'bg-gray-800' : 'bg-white', className)}>
@@ -707,6 +742,11 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
                 ></div>
               ))}
             </div>
+            {silenceDetected && (
+              <p className={cn("text-xs mt-2", isDarkMode ? "text-gray-400" : "text-gray-500")}>
+                Silence detected, processing...
+              </p>
+            )}
           </div>
         )}
         

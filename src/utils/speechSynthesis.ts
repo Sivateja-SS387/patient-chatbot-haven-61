@@ -1,4 +1,3 @@
-
 export interface SpeechOptions {
   voice?: SpeechSynthesisVoice | null;
   rate?: number;
@@ -15,6 +14,7 @@ export class SpeechSynthesisService {
   private isSpeaking: boolean = false;
   private utterance: SpeechSynthesisUtterance | null = null;
   private defaultVoice: SpeechSynthesisVoice | null = null;
+  private speechEndCallbacks: Array<() => void> = [];
 
   private constructor() {
     this.synth = window.speechSynthesis;
@@ -68,12 +68,18 @@ export class SpeechSynthesisService {
       utterance.onend = () => {
         this.isSpeaking = false;
         this.utterance = null;
+        // Notify all callbacks that speech has ended
+        this.speechEndCallbacks.forEach(callback => callback());
+        this.speechEndCallbacks = [];
         resolve();
       };
 
       utterance.onerror = (event) => {
         this.isSpeaking = false;
         this.utterance = null;
+        // Notify all callbacks even on error
+        this.speechEndCallbacks.forEach(callback => callback());
+        this.speechEndCallbacks = [];
         reject(new Error(`Speech synthesis error: ${event.error}`));
       };
 
@@ -83,11 +89,24 @@ export class SpeechSynthesisService {
     });
   }
 
+  public onSpeechEnd(callback: () => void): void {
+    if (!this.isSpeaking) {
+      // If not speaking, call immediately
+      setTimeout(callback, 0);
+    } else {
+      // Otherwise add to callback queue
+      this.speechEndCallbacks.push(callback);
+    }
+  }
+
   public stop(): void {
     if (this.isSpeaking) {
       this.synth.cancel();
       this.isSpeaking = false;
       this.utterance = null;
+      // Notify all callbacks
+      this.speechEndCallbacks.forEach(callback => callback());
+      this.speechEndCallbacks = [];
     }
   }
 
