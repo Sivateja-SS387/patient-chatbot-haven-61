@@ -88,9 +88,12 @@ export class SpeechSynthesisService {
       utterance.pitch = options?.pitch ?? 1;
       utterance.volume = options?.volume ?? 1;
 
+      this.isSpeaking = true;
+      this.utterance = utterance;
+
       // Fix for Chrome issue where onend doesn't fire
       let timer: number | null = null;
-      let checkSpeaking = () => {
+      const checkSpeaking = () => {
         if (!this.synth.speaking) {
           if (timer) {
             clearInterval(timer);
@@ -137,12 +140,18 @@ export class SpeechSynthesisService {
         reject(new Error(`Speech synthesis error: ${event.error}`));
       };
 
-      this.utterance = utterance;
-      this.isSpeaking = true;
-      this.synth.speak(utterance);
-      
-      // Chrome fix: start a timer to check if speech has ended
-      timer = window.setInterval(checkSpeaking, 100);
+      // Speak the utterance
+      try {
+        this.synth.speak(utterance);
+        
+        // Chrome fix: start a timer to check if speech has ended
+        timer = window.setInterval(checkSpeaking, 100);
+      } catch (error) {
+        console.error("Error speaking:", error);
+        this.isSpeaking = false;
+        this.utterance = null;
+        reject(error);
+      }
     });
   }
 
