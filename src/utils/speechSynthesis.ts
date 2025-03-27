@@ -24,6 +24,12 @@ export class SpeechSynthesisService {
   private isRecording: boolean = false;
   private recordingStartTime: number = 0;
   private onAudioAvailable: ((audio: Blob) => void) | null = null;
+  private silenceTimeout: number | null = null;
+  private audioLevel: number = 0;
+  private silenceThreshold: number = 0.01;
+  private silenceDetectionTimer: any = null;
+  private recordingTimer: any = null;
+  private recordingMaxDuration: number = 30000; // 30 seconds max recording
 
   private constructor() {
     this.synth = window.speechSynthesis;
@@ -117,6 +123,140 @@ export class SpeechSynthesisService {
   }
 
   // Recording methods
+  public async startContinuousRecording(onAudioAvailable?: (audio: Blob) => void): Promise<boolean> {
+    if (this.isRecording) {
+      return true; // Already recording
+    }
+
+    try {
+      this.onAudioAvailable = onAudioAvailable || null;
+      
+      if (!this.audioContext) {
+        this.audioContext = new AudioContext();
+      }
+      
+      if (!this.audioStream) {
+        this.audioStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+      }
+
+      // Set up audio analyzer to detect silence
+      if (this.audioContext && this.audioStream) {
+        const source = this.audioContext.createMediaStreamSource(this.audioStream);
+        const analyser = this.audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        
+        // Monitor audio levels
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        
+        const checkAudioLevel = () => {
+          if (!this.isRecording) return;
+          
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i];
+          }
+          this.audioLevel = sum / bufferLength / 255;
+          
+          // If audio level is above threshold, reset silence detection
+          if (this.audioLevel > this.silenceThreshold) {
+            if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
+              this.startNewRecording();
+            }
+            // Reset silence timeout
+            if (this.silenceTimeout) {
+              clearTimeout(this.silenceTimeout);
+              this.silenceTimeout = null;
+            }
+            // Set a new silence timeout
+            this.silenceTimeout = window.setTimeout(() => {
+              console.log('Silence detected, saving recording...');
+              if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                this.mediaRecorder.stop();
+              }
+            }, 1500); // 1.5s of silence
+          }
+          
+          // Continue monitoring
+          if (this.isRecording) {
+            requestAnimationFrame(checkAudioLevel);
+          }
+        };
+        
+        // Start monitoring audio levels
+        requestAnimationFrame(checkAudioLevel);
+      }
+      
+      this.isRecording = true;
+      console.log("Continuous recording started, monitoring audio levels");
+      return true;
+    } catch (error) {
+      console.error('Failed to start continuous recording:', error);
+      this.isRecording = false;
+      this.cleanupRecording();
+      return false;
+    }
+  }
+  
+  private startNewRecording(): void {
+    try {
+      if (!this.audioStream) return;
+      
+      this.audioChunks = [];
+      
+      const mimeType = 'audio/webm';
+      
+      this.mediaRecorder = new MediaRecorder(this.audioStream, {
+        mimeType: mimeType,
+        audioBitsPerSecond: 128000 // 128kbps
+      });
+      
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+      
+      this.mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+        
+        if (this.onAudioAvailable && audioBlob.size > 0) {
+          this.onAudioAvailable(audioBlob);
+        }
+        
+        this.audioChunks = [];
+        console.log('Recording saved, size:', audioBlob.size);
+      };
+      
+      this.mediaRecorder.start(100); // Collect data every 100ms
+      this.recordingStartTime = Date.now();
+      
+      // Set a maximum recording duration
+      if (this.recordingTimer) {
+        clearTimeout(this.recordingTimer);
+      }
+      
+      this.recordingTimer = setTimeout(() => {
+        if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+          console.log('Max recording duration reached, stopping...');
+          this.mediaRecorder.stop();
+        }
+      }, this.recordingMaxDuration);
+      
+      console.log('New recording started');
+    } catch (error) {
+      console.error('Error starting new recording:', error);
+    }
+  }
+  
   public async startRecording(onAudioAvailable?: (audio: Blob) => void): Promise<boolean> {
     if (this.isRecording) {
       return true; // Already recording
@@ -198,6 +338,25 @@ export class SpeechSynthesisService {
     });
   }
   
+  public stopContinuousRecording(): void {
+    if (this.silenceTimeout) {
+      clearTimeout(this.silenceTimeout);
+      this.silenceTimeout = null;
+    }
+    
+    if (this.recordingTimer) {
+      clearTimeout(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+    
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      this.mediaRecorder.stop();
+    }
+    
+    this.isRecording = false;
+    this.cleanupRecording();
+  }
+  
   public async pauseRecording(): Promise<void> {
     if (this.isRecording && this.mediaRecorder && this.mediaRecorder.state === 'recording') {
       this.mediaRecorder.pause();
@@ -221,7 +380,21 @@ export class SpeechSynthesisService {
     return this.isRecording;
   }
   
+  public getAudioLevel(): number {
+    return this.audioLevel;
+  }
+  
   public cleanupRecording(): void {
+    if (this.silenceTimeout) {
+      clearTimeout(this.silenceTimeout);
+      this.silenceTimeout = null;
+    }
+    
+    if (this.recordingTimer) {
+      clearTimeout(this.recordingTimer);
+      this.recordingTimer = null;
+    }
+    
     if (this.mediaRecorder) {
       if (this.mediaRecorder.state !== 'inactive') {
         this.mediaRecorder.stop();
@@ -238,6 +411,7 @@ export class SpeechSynthesisService {
     this.audioChunks = [];
     this.recordingStartTime = 0;
     this.onAudioAvailable = null;
+    this.audioLevel = 0;
   }
 }
 
