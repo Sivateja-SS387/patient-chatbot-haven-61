@@ -1,10 +1,11 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, Bot, User, Mic, MicOff, VolumeX, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
-import speechSynthesis from '@/utils/speechSynthesis';
+import speechService from '@/utils/speech/speechService';
 
 type Message = {
   id: string;
@@ -75,16 +76,16 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     
     // Monitor audio level for visualization
     audioLevelInterval.current = window.setInterval(() => {
-      if (isComponentMounted.current && speechSynthesis.isCurrentlyRecording()) {
-        setAudioLevel(speechSynthesis.getAudioLevel());
+      if (isComponentMounted.current && speechService.isCurrentlyRecording()) {
+        setAudioLevel(speechService.getAudioLevel());
       }
     }, 100);
     
     // Clean up function
     return () => {
       isComponentMounted.current = false;
-      speechSynthesis.stop();
-      speechSynthesis.stopContinuousRecording();
+      speechService.stop();
+      speechService.stopContinuousRecording();
       
       if (audioLevelInterval.current) {
         clearInterval(audioLevelInterval.current);
@@ -95,12 +96,12 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
 
   // Toggle audio quality check
   useEffect(() => {
-    speechSynthesis.setAudioQualityCheck(qualityCheckEnabled);
+    speechService.setAudioQualityCheck(qualityCheckEnabled);
   }, [qualityCheckEnabled]);
 
   const startContinuousRecording = async () => {
     try {
-      const success = await speechSynthesis.startContinuousRecording((audioBlob) => {
+      const success = await speechService.startContinuousRecording((audioBlob) => {
         // This callback is called when a recording is complete
         if (audioBlob && audioBlob.size > 0) {
           console.log('Audio recording completed, size:', audioBlob.size);
@@ -154,7 +155,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const toggleSpeechRecognition = () => {
     if (isListening) {
       // Stop continuous recording
-      speechSynthesis.stopContinuousRecording();
+      speechService.stopContinuousRecording();
       setIsListening(false);
       setIsSpeechEnabled(false);
     } else {
@@ -169,7 +170,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     
     if (!newAudioState) {
       // Stop any ongoing speech
-      speechSynthesis.stop();
+      speechService.stop();
     } else {
       // Notification that audio is enabled
       toast({
@@ -199,14 +200,14 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       
       // Temporarily pause continuous recording while speaking
       if (isListening) {
-        speechSynthesis.pauseRecording();
+        speechService.pauseRecording();
       }
       
-      await speechSynthesis.speak(text);
+      await speechService.speak(text);
       
       // Resume continuous recording after speaking
       if (isListening) {
-        speechSynthesis.resumeRecording();
+        speechService.resumeRecording();
       }
     } catch (error) {
       console.error('Speech synthesis error:', error);
