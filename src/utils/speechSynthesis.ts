@@ -26,7 +26,7 @@ export class SpeechSynthesisService {
   private onAudioAvailable: ((audio: Blob) => void) | null = null;
   private silenceTimeout: number | null = null;
   private audioLevel: number = 0;
-  private silenceThreshold: number = 0.01;
+  private silenceThreshold: number = 0.05; // Increased from 0.01 to 0.05 for better stability
   private silenceDetectionTimer: any = null;
   private recordingTimer: any = null;
   private recordingMaxDuration: number = 30000; // 30 seconds max recording
