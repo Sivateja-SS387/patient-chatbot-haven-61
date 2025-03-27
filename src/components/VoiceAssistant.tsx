@@ -36,12 +36,14 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [restartAttempts, setRestartAttempts] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const silenceTimeoutRef = useRef<number | null>(null);
   const isComponentMounted = useRef(false);
   const startTimeoutRef = useRef<number | null>(null);
+  const audioDataRef = useRef<Blob | null>(null);
 
   const demoQueries = [
     "What medications do I need to take today?",
@@ -74,6 +76,8 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
           setTimeout(() => {
             if (isComponentMounted.current) {
               startSpeechRecognition();
+              // Also start recording
+              startRecording();
             }
           }, 500);
         }
@@ -85,6 +89,8 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       isComponentMounted.current = false;
       cleanupResources();
       speechSynthesis.stop();
+      stopRecording();
+      speechSynthesis.cleanupRecording();
     };
   }, []);
 
@@ -133,6 +139,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
         recognitionRef.current.onstart = () => {
           if (isComponentMounted.current) {
             setIsListening(true);
+            startRecording();
           }
         };
         
@@ -154,9 +161,13 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
           // If this is a final result (user paused speaking)
           if (result.isFinal) {
             // Set a timeout to detect silence (user stopped speaking)
-            silenceTimeoutRef.current = window.setTimeout(() => {
+            silenceTimeoutRef.current = window.setTimeout(async () => {
               if (isComponentMounted.current && transcriptValue.trim().length > 0) {
+                // Stop the recording and get the audio data
+                await stopRecording();
                 processVoiceInput(transcriptValue);
+                // Start a new recording after processing
+                startRecording();
               }
             }, 1500); // 1.5 seconds of silence before sending
           }
@@ -342,6 +353,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       }
       setIsListening(false);
       setIsSpeechEnabled(false);
+      stopRecording();
     } else {
       setIsSpeechEnabled(true);
       
@@ -352,6 +364,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       
       startTimeoutRef.current = window.setTimeout(() => {
         startSpeechRecognition();
+        startRecording();
       }, 200);
     }
   };
@@ -377,6 +390,10 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
     
     try {
       setIsSpeaking(true);
+      // Pause recording while speaking to avoid capturing the assistant's speech
+      if (isRecording) {
+        speechSynthesis.pauseRecording();
+      }
       await speechSynthesis.speak(text);
     } catch (error) {
       console.error('Speech synthesis error:', error);
@@ -387,11 +404,58 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       });
     } finally {
       setIsSpeaking(false);
+      // Resume recording after speaking
+      if (isRecording) {
+        speechSynthesis.resumeRecording();
+      }
     }
   };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const startRecording = async () => {
+    try {
+      if (isRecording) return;
+      
+      const success = await speechSynthesis.startRecording((audioBlob) => {
+        // This callback will be called when audio chunks are available
+        audioDataRef.current = audioBlob;
+      });
+      
+      if (success) {
+        setIsRecording(true);
+        console.log('Recording started successfully');
+      } else {
+        console.error('Failed to start recording');
+        toast({
+          title: "Recording Error",
+          description: "Failed to start recording. Please check microphone permissions.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Error starting recording:', error);
+    }
+  };
+
+  const stopRecording = async () => {
+    try {
+      if (!isRecording) return;
+      
+      const audioBlob = await speechSynthesis.stopRecording();
+      setIsRecording(false);
+      
+      if (audioBlob) {
+        audioDataRef.current = audioBlob;
+        console.log('Recording stopped, audio blob size:', audioBlob.size);
+        return audioBlob;
+      }
+    } catch (error) {
+      console.error('Error stopping recording:', error);
+    }
+    return null;
   };
 
   const processVoiceInput = (inputText: string) => {
@@ -604,6 +668,17 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
               isDarkMode ? "bg-green-900 text-green-100" : "bg-green-100 text-green-800"
             )}>
               Speaking...
+            </p>
+          </div>
+        )}
+        
+        {isRecording && (
+          <div className="mt-2 text-center">
+            <p className={cn(
+              "inline-block px-3 py-1 rounded-full text-xs",
+              isDarkMode ? "bg-red-900 text-red-100" : "bg-red-100 text-red-800"
+            )}>
+              Recording audio...
             </p>
           </div>
         )}

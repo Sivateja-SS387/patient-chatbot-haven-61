@@ -15,6 +15,15 @@ export class SpeechSynthesisService {
   private isSpeaking: boolean = false;
   private utterance: SpeechSynthesisUtterance | null = null;
   private defaultVoice: SpeechSynthesisVoice | null = null;
+  
+  // Audio recording properties
+  private audioContext: AudioContext | null = null;
+  private mediaRecorder: MediaRecorder | null = null;
+  private audioStream: MediaStream | null = null;
+  private audioChunks: Blob[] = [];
+  private isRecording: boolean = false;
+  private recordingStartTime: number = 0;
+  private onAudioAvailable: ((audio: Blob) => void) | null = null;
 
   private constructor() {
     this.synth = window.speechSynthesis;
@@ -105,6 +114,130 @@ export class SpeechSynthesisService {
     if (this.synth.paused) {
       this.synth.resume();
     }
+  }
+
+  // Recording methods
+  public async startRecording(onAudioAvailable?: (audio: Blob) => void): Promise<boolean> {
+    if (this.isRecording) {
+      return true; // Already recording
+    }
+
+    try {
+      this.onAudioAvailable = onAudioAvailable || null;
+      this.audioChunks = [];
+      
+      if (!this.audioContext) {
+        this.audioContext = new AudioContext();
+      }
+      
+      if (!this.audioStream) {
+        this.audioStream = await navigator.mediaDevices.getUserMedia({ 
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          } 
+        });
+      }
+      
+      const mimeType = 'audio/webm';
+      
+      this.mediaRecorder = new MediaRecorder(this.audioStream, {
+        mimeType: mimeType,
+        audioBitsPerSecond: 128000 // 128kbps
+      });
+      
+      this.mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          this.audioChunks.push(event.data);
+        }
+      };
+      
+      this.mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+        
+        if (this.onAudioAvailable && audioBlob.size > 0) {
+          this.onAudioAvailable(audioBlob);
+        }
+        
+        this.audioChunks = [];
+      };
+      
+      this.mediaRecorder.start(100); // Collect data every 100ms
+      this.isRecording = true;
+      this.recordingStartTime = Date.now();
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      this.isRecording = false;
+      this.cleanupRecording();
+      return false;
+    }
+  }
+  
+  public stopRecording(): Promise<Blob | null> {
+    return new Promise((resolve) => {
+      if (!this.isRecording || !this.mediaRecorder) {
+        resolve(null);
+        return;
+      }
+      
+      const onStop = () => {
+        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+        this.isRecording = false;
+        resolve(audioBlob.size > 0 ? audioBlob : null);
+      };
+      
+      if (this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder.onstop = onStop;
+        this.mediaRecorder.stop();
+      } else {
+        onStop();
+      }
+    });
+  }
+  
+  public async pauseRecording(): Promise<void> {
+    if (this.isRecording && this.mediaRecorder && this.mediaRecorder.state === 'recording') {
+      this.mediaRecorder.pause();
+    }
+  }
+  
+  public async resumeRecording(): Promise<void> {
+    if (this.isRecording && this.mediaRecorder && this.mediaRecorder.state === 'paused') {
+      this.mediaRecorder.resume();
+    }
+  }
+  
+  public getRecordingDuration(): number {
+    if (!this.isRecording || this.recordingStartTime === 0) {
+      return 0;
+    }
+    return Date.now() - this.recordingStartTime;
+  }
+  
+  public isCurrentlyRecording(): boolean {
+    return this.isRecording;
+  }
+  
+  public cleanupRecording(): void {
+    if (this.mediaRecorder) {
+      if (this.mediaRecorder.state !== 'inactive') {
+        this.mediaRecorder.stop();
+      }
+      this.mediaRecorder = null;
+    }
+    
+    if (this.audioStream) {
+      this.audioStream.getTracks().forEach(track => track.stop());
+      this.audioStream = null;
+    }
+    
+    this.isRecording = false;
+    this.audioChunks = [];
+    this.recordingStartTime = 0;
+    this.onAudioAvailable = null;
   }
 }
 
