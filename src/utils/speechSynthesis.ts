@@ -1,4 +1,3 @@
-
 export interface SpeechOptions {
   voice?: SpeechSynthesisVoice | null;
   rate?: number;
@@ -30,6 +29,14 @@ export class SpeechSynthesisService {
   private silenceDetectionTimer: any = null;
   private recordingTimer: any = null;
   private recordingMaxDuration: number = 30000; // 30 seconds max recording
+  
+  // Audio quality check properties
+  private audioLevelHistory: number[] = [];
+  private consistentAudioThreshold: number = 0.1; // Higher threshold for intentional speech
+  private minRecordingDuration: number = 300; // Minimum duration (ms) to consider valid input
+  private consistencyCheckInterval: number = 100; // Check audio level every 100ms
+  private audioLevelCheckTimer: any = null;
+  private audioQualityCheckEnabled: boolean = true;
 
   private constructor() {
     this.synth = window.speechSynthesis;
@@ -145,7 +152,7 @@ export class SpeechSynthesisService {
         });
       }
 
-      // Set up audio analyzer to detect silence
+      // Set up audio analyzer to detect silence and quality
       if (this.audioContext && this.audioStream) {
         const source = this.audioContext.createMediaStreamSource(this.audioStream);
         const analyser = this.audioContext.createAnalyser();
@@ -166,6 +173,14 @@ export class SpeechSynthesisService {
           }
           this.audioLevel = sum / bufferLength / 255;
           
+          // Track audio level history for quality assessment
+          this.audioLevelHistory.push(this.audioLevel);
+          
+          // Keep only the most recent history (last 2 seconds)
+          if (this.audioLevelHistory.length > 20) {
+            this.audioLevelHistory.shift();
+          }
+          
           // If audio level is above threshold, reset silence detection
           if (this.audioLevel > this.silenceThreshold) {
             if (!this.mediaRecorder || this.mediaRecorder.state === 'inactive') {
@@ -178,8 +193,9 @@ export class SpeechSynthesisService {
             }
             // Set a new silence timeout
             this.silenceTimeout = window.setTimeout(() => {
-              console.log('Silence detected, saving recording...');
+              console.log('Silence detected, checking recording quality...');
               if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                // Stop recording and check quality before processing
                 this.mediaRecorder.stop();
               }
             }, 1500); // 1.5s of silence
@@ -196,6 +212,7 @@ export class SpeechSynthesisService {
       }
       
       this.isRecording = true;
+      this.audioLevelHistory = [];
       console.log("Continuous recording started, monitoring audio levels");
       return true;
     } catch (error) {
@@ -206,11 +223,55 @@ export class SpeechSynthesisService {
     }
   }
   
+  private isIntentionalSpeech(): boolean {
+    // No history yet
+    if (this.audioLevelHistory.length < 3) {
+      return false;
+    }
+
+    // Check recording duration
+    const recordingDuration = Date.now() - this.recordingStartTime;
+    if (recordingDuration < this.minRecordingDuration) {
+      console.log('Recording too short:', recordingDuration, 'ms');
+      return false;
+    }
+
+    // Check if there are enough samples above the consistency threshold
+    const significantSamples = this.audioLevelHistory.filter(
+      level => level > this.consistentAudioThreshold
+    );
+    
+    // At least 20% of samples should be above threshold
+    const isSignificant = significantSamples.length > this.audioLevelHistory.length * 0.2;
+    
+    // Check for audio level consistency (not just random noise spikes)
+    // Calculate standard deviation to check for consistency
+    const avg = this.audioLevelHistory.reduce((sum, val) => sum + val, 0) / this.audioLevelHistory.length;
+    const variance = this.audioLevelHistory.reduce((sum, val) => sum + Math.pow(val - avg, 2), 0) / this.audioLevelHistory.length;
+    const stdDev = Math.sqrt(variance);
+    
+    // Lower standard deviation means more consistent audio (not random noise)
+    const isConsistent = stdDev < 0.15;
+    
+    console.log('Audio quality check:', { 
+      significantSamples: significantSamples.length, 
+      totalSamples: this.audioLevelHistory.length,
+      isSignificant,
+      avgLevel: avg,
+      stdDev,
+      isConsistent,
+      duration: recordingDuration
+    });
+    
+    return isSignificant && isConsistent;
+  }
+  
   private startNewRecording(): void {
     try {
       if (!this.audioStream) return;
       
       this.audioChunks = [];
+      this.audioLevelHistory = [];
       
       const mimeType = 'audio/webm';
       
@@ -227,6 +288,13 @@ export class SpeechSynthesisService {
       
       this.mediaRecorder.onstop = () => {
         const audioBlob = new Blob(this.audioChunks, { type: mimeType });
+        
+        // Only process the audio if it passes quality checks
+        if (this.audioQualityCheckEnabled && !this.isIntentionalSpeech()) {
+          console.log('Audio quality check failed - discarding audio');
+          this.audioChunks = [];
+          return;
+        }
         
         if (this.onAudioAvailable && audioBlob.size > 0) {
           this.onAudioAvailable(audioBlob);
@@ -384,6 +452,10 @@ export class SpeechSynthesisService {
     return this.audioLevel;
   }
   
+  public setAudioQualityCheck(enabled: boolean): void {
+    this.audioQualityCheckEnabled = enabled;
+  }
+  
   public cleanupRecording(): void {
     if (this.silenceTimeout) {
       clearTimeout(this.silenceTimeout);
@@ -412,6 +484,12 @@ export class SpeechSynthesisService {
     this.recordingStartTime = 0;
     this.onAudioAvailable = null;
     this.audioLevel = 0;
+    
+    if (this.audioLevelCheckTimer) {
+      clearInterval(this.audioLevelCheckTimer);
+      this.audioLevelCheckTimer = null;
+    }
+    this.audioLevelHistory = [];
   }
 }
 

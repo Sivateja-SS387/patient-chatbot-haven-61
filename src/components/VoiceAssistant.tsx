@@ -1,7 +1,6 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, Bot, User, Mic, MicOff, VolumeX } from 'lucide-react';
+import { Volume2, Bot, User, Mic, MicOff, VolumeX, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/hooks/use-toast';
@@ -37,6 +36,7 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [qualityCheckEnabled, setQualityCheckEnabled] = useState(true);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isComponentMounted = useRef(false);
@@ -92,6 +92,11 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
       }
     };
   }, []);
+
+  // Toggle audio quality check
+  useEffect(() => {
+    speechSynthesis.setAudioQualityCheck(qualityCheckEnabled);
+  }, [qualityCheckEnabled]);
 
   const startContinuousRecording = async () => {
     try {
@@ -172,6 +177,18 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
         description: "The assistant will now speak responses aloud.",
       });
     }
+  };
+
+  const toggleQualityCheck = () => {
+    const newState = !qualityCheckEnabled;
+    setQualityCheckEnabled(newState);
+    
+    toast({
+      title: newState ? "Audio Quality Check Enabled" : "Audio Quality Check Disabled",
+      description: newState 
+        ? "Only intentional speech will be processed." 
+        : "All audio will be processed, including background noise.",
+    });
   };
 
   const speakText = async (text: string) => {
@@ -297,6 +314,18 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
           >
             {audioEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
+          <button
+            onClick={toggleQualityCheck}
+            className={cn(
+              "p-1 rounded-full transition-colors",
+              qualityCheckEnabled
+                ? isDarkMode ? "bg-blue-900 text-blue-100" : "bg-blue-100 text-blue-800"
+                : isDarkMode ? "bg-gray-600 text-gray-300" : "bg-gray-200 text-gray-600"
+            )}
+            title={qualityCheckEnabled ? "Disable audio quality check" : "Enable audio quality check"}
+          >
+            <Settings size={16} />
+          </button>
           <span className={cn(
             "px-2 py-1 text-xs rounded-full",
             isListening 
@@ -409,6 +438,14 @@ const VoiceAssistant = ({ className }: VoiceAssistantProps) => {
             ))}
           </div>
         </div>
+        
+        {qualityCheckEnabled && (
+          <div className="mt-2 mb-2">
+            <p className={cn("text-xs", isDarkMode ? "text-green-300" : "text-green-600")}>
+              Audio quality check is enabled: Only intentional speech will be processed
+            </p>
+          </div>
+        )}
         
         {isListening && (
           <div className="mt-4 text-center">
