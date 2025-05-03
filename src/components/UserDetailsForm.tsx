@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Phone } from 'lucide-react';
+import { Calendar, MapPin, Phone, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
@@ -27,27 +27,26 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Country codes for the dropdown
+// Country codes for the dropdown with flags
 const countryCodes = [
-  { code: '+1', name: 'USA/Canada' },
-  { code: '+44', name: 'UK' },
-  { code: '+91', name: 'India' },
-  { code: '+61', name: 'Australia' },
-  { code: '+49', name: 'Germany' },
-  { code: '+33', name: 'France' },
-  { code: '+86', name: 'China' },
-  { code: '+81', name: 'Japan' },
-  { code: '+55', name: 'Brazil' },
-  { code: '+27', name: 'South Africa' },
-  { code: '+65', name: 'Singapore' },
-  { code: '+971', name: 'UAE' },
+  { code: '+1', name: 'USA/Canada', flag: '🇺🇸' },
+  { code: '+44', name: 'UK', flag: '🇬🇧' },
+  { code: '+91', name: 'India', flag: '🇮🇳' },
+  { code: '+61', name: 'Australia', flag: '🇦🇺' },
+  { code: '+49', name: 'Germany', flag: '🇩🇪' },
+  { code: '+33', name: 'France', flag: '🇫🇷' },
+  { code: '+86', name: 'China', flag: '🇨🇳' },
+  { code: '+81', name: 'Japan', flag: '🇯🇵' },
+  { code: '+55', name: 'Brazil', flag: '🇧🇷' },
+  { code: '+27', name: 'South Africa', flag: '🇿🇦' },
+  { code: '+65', name: 'Singapore', flag: '🇸🇬' },
+  { code: '+971', name: 'UAE', flag: '🇦🇪' },
 ];
 
 // Form validation schema
@@ -107,6 +106,12 @@ const UserDetailsForm = () => {
     navigate('/dashboard');
   };
 
+  // Find flag for a country code
+  const getCountryFlag = (code: string) => {
+    const country = countryCodes.find(c => c.code === code);
+    return country ? country.flag : '';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
       <div className="max-w-2xl mx-auto">
@@ -118,77 +123,24 @@ const UserDetailsForm = () => {
           <CardContent className="p-6">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Personal Information Section */}
+                {/* Personal Information Section - Compact Layout */}
                 <div className="space-y-4">
                   <h2 className="text-xl font-semibold mb-4 dark:text-white">Personal Information</h2>
                   
-                  <FormField
-                    control={form.control}
-                    name="dob"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date of Birth</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="gender"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Gender</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select gender" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="male">Male</SelectItem>
-                            <SelectItem value="female">Female</SelectItem>
-                            <SelectItem value="non-binary">Non-binary</SelectItem>
-                            <SelectItem value="other">Other</SelectItem>
-                            <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Mobile Number with Country Code */}
-                  <div className="grid grid-cols-12 gap-2">
+                  {/* Row 1: DOB and Gender */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="countryCode"
+                      name="dob"
                       render={({ field }) => (
-                        <FormItem className="col-span-4 sm:col-span-3">
-                          <FormLabel>Code</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                          >
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Code" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="max-h-[200px]">
-                              {countryCodes.map((country) => (
-                                <SelectItem key={country.code} value={country.code}>
-                                  {country.code} {country.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                        <FormItem>
+                          <FormLabel>Date of Birth</FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <Input type="date" {...field} className="pl-8" />
+                              <Calendar className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            </div>
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -196,19 +148,103 @@ const UserDetailsForm = () => {
 
                     <FormField
                       control={form.control}
-                      name="mobileNumber"
+                      name="gender"
                       render={({ field }) => (
-                        <FormItem className="col-span-8 sm:col-span-9">
-                          <FormLabel>Mobile Number</FormLabel>
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <div className="relative">
+                            <Select 
+                              onValueChange={field.onChange} 
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger className="pl-8">
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="male">Male</SelectItem>
+                                <SelectItem value="female">Female</SelectItem>
+                                <SelectItem value="non-binary">Non-binary</SelectItem>
+                                <SelectItem value="other">Other</SelectItem>
+                                <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <User className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 z-10" />
+                          </div>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Row 2: Phone Number and Address */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Mobile Number with Country Code - Now taking half width */}
+                    <div className="grid grid-cols-12 gap-2">
+                      <FormField
+                        control={form.control}
+                        name="countryCode"
+                        render={({ field }) => (
+                          <FormItem className="col-span-4">
+                            <FormLabel>Code</FormLabel>
+                            <Select 
+                              onValueChange={field.onChange} 
+                              defaultValue={field.value}
+                            >
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Code">
+                                    <span>{getCountryFlag(field.value)} {field.value}</span>
+                                  </SelectValue>
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent className="max-h-[200px]">
+                                {countryCodes.map((country) => (
+                                  <SelectItem key={country.code} value={country.code}>
+                                    <span>{country.flag} {country.code} {country.name}</span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="mobileNumber"
+                        render={({ field }) => (
+                          <FormItem className="col-span-8">
+                            <FormLabel>Mobile Number</FormLabel>
+                            <FormControl>
+                              <div className="relative">
+                                <Input 
+                                  placeholder="Enter mobile number" 
+                                  {...field} 
+                                  type="tel" 
+                                  className="pl-8"
+                                />
+                                <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              </div>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Address</FormLabel>
                           <FormControl>
                             <div className="relative">
-                              <Input 
-                                placeholder="Enter your mobile number" 
-                                {...field} 
-                                type="tel" 
-                                className="pl-8"
-                              />
-                              <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input placeholder="Enter your address" {...field} className="pl-8" />
+                              <MapPin className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -216,20 +252,6 @@ const UserDetailsForm = () => {
                       )}
                     />
                   </div>
-
-                  <FormField
-                    control={form.control}
-                    name="address"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Address</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Enter your address" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
                 </div>
 
                 {/* Submit Button */}
