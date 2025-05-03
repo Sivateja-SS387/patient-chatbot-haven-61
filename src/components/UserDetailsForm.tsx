@@ -4,10 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Calendar, MapPin, Phone, User } from 'lucide-react';
+import { Calendar, Flag, MapPin, Phone, User } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useTheme } from '@/contexts/ThemeContext';
-import { cn } from '@/lib/utils';
 
 import {
   Form,
@@ -26,50 +25,72 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-// Country codes for the dropdown with flags
+// Extended country codes list with number length requirements
 const countryCodes = [
-  { code: '+1', name: 'USA/Canada', flag: '🇺🇸' },
-  { code: '+44', name: 'UK', flag: '🇬🇧' },
-  { code: '+91', name: 'India', flag: '🇮🇳' },
-  { code: '+61', name: 'Australia', flag: '🇦🇺' },
-  { code: '+49', name: 'Germany', flag: '🇩🇪' },
-  { code: '+33', name: 'France', flag: '🇫🇷' },
-  { code: '+86', name: 'China', flag: '🇨🇳' },
-  { code: '+81', name: 'Japan', flag: '🇯🇵' },
-  { code: '+55', name: 'Brazil', flag: '🇧🇷' },
-  { code: '+27', name: 'South Africa', flag: '🇿🇦' },
-  { code: '+65', name: 'Singapore', flag: '🇸🇬' },
-  { code: '+971', name: 'UAE', flag: '🇦🇪' },
+  { code: '+1', name: 'USA/Canada', flag: '🇺🇸', minLength: 10, maxLength: 10 },
+  { code: '+44', name: 'UK', flag: '🇬🇧', minLength: 10, maxLength: 10 },
+  { code: '+91', name: 'India', flag: '🇮🇳', minLength: 10, maxLength: 10 },
+  { code: '+61', name: 'Australia', flag: '🇦🇺', minLength: 9, maxLength: 9 },
+  { code: '+49', name: 'Germany', flag: '🇩🇪', minLength: 10, maxLength: 11 },
+  { code: '+33', name: 'France', flag: '🇫🇷', minLength: 9, maxLength: 9 },
+  { code: '+86', name: 'China', flag: '🇨🇳', minLength: 11, maxLength: 11 },
+  { code: '+81', name: 'Japan', flag: '🇯🇵', minLength: 10, maxLength: 10 },
+  { code: '+55', name: 'Brazil', flag: '🇧🇷', minLength: 10, maxLength: 11 },
+  { code: '+27', name: 'South Africa', flag: '🇿🇦', minLength: 9, maxLength: 9 },
+  { code: '+65', name: 'Singapore', flag: '🇸🇬', minLength: 8, maxLength: 8 },
+  { code: '+971', name: 'UAE', flag: '🇦🇪', minLength: 9, maxLength: 9 },
+  { code: '+52', name: 'Mexico', flag: '🇲🇽', minLength: 10, maxLength: 10 },
+  { code: '+82', name: 'South Korea', flag: '🇰🇷', minLength: 10, maxLength: 10 },
+  { code: '+39', name: 'Italy', flag: '🇮🇹', minLength: 10, maxLength: 10 },
+  { code: '+34', name: 'Spain', flag: '🇪🇸', minLength: 9, maxLength: 9 },
+  { code: '+7', name: 'Russia', flag: '🇷🇺', minLength: 10, maxLength: 10 },
+  { code: '+64', name: 'New Zealand', flag: '🇳🇿', minLength: 8, maxLength: 9 },
+  { code: '+31', name: 'Netherlands', flag: '🇳🇱', minLength: 9, maxLength: 9 },
+  { code: '+46', name: 'Sweden', flag: '🇸🇪', minLength: 9, maxLength: 9 },
 ];
 
-// Form validation schema
-const formSchema = z.object({
-  dob: z.string().min(1, "Date of birth is required"),
-  gender: z.string().min(1, "Gender is required"),
-  countryCode: z.string().min(1, "Country code is required"),
-  mobileNumber: z.string().min(1, "Mobile number is required")
-    .regex(/^\d+$/, "Mobile number must contain only digits")
-    .min(5, "Mobile number must be at least 5 digits"),
-  address: z.string().min(5, "Address must be at least 5 characters"),
-});
+// Create the form schema with dynamic validation based on country code
+const createFormSchema = (selectedCountryCode: string) => {
+  const selectedCountry = countryCodes.find(country => country.code === selectedCountryCode);
+  
+  let mobileNumberSchema = z.string().min(1, "Mobile number is required")
+    .regex(/^\d+$/, "Mobile number must contain only digits");
 
-type FormValues = z.infer<typeof formSchema>;
+  if (selectedCountry) {
+    mobileNumberSchema = mobileNumberSchema.refine(
+      (val) => val.length >= selectedCountry.minLength && val.length <= selectedCountry.maxLength,
+      {
+        message: `${selectedCountry.name} phone numbers must be ${
+          selectedCountry.minLength === selectedCountry.maxLength
+            ? `${selectedCountry.minLength} digits`
+            : `between ${selectedCountry.minLength} and ${selectedCountry.maxLength} digits`
+        }`
+      }
+    );
+  }
+
+  return z.object({
+    dob: z.string().min(1, "Date of birth is required"),
+    gender: z.string().min(1, "Gender is required"),
+    countryCode: z.string().min(1, "Country code is required"),
+    mobileNumber: mobileNumberSchema,
+    address: z.string().min(5, "Address must be at least 5 characters"),
+  });
+};
+
+type FormValues = z.infer<ReturnType<typeof createFormSchema>>;
 
 const UserDetailsForm = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  const [selectedCountryCode, setSelectedCountryCode] = useState('+1');
 
   // Main form
   const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(createFormSchema(selectedCountryCode)),
     defaultValues: {
       dob: '',
       address: '',
@@ -78,6 +99,20 @@ const UserDetailsForm = () => {
       gender: '',
     },
   });
+
+  // Update validation when country code changes
+  const onCountryCodeChange = (code: string) => {
+    setSelectedCountryCode(code);
+    form.setValue("countryCode", code);
+    form.trigger("mobileNumber"); // Re-trigger validation
+  };
+
+  // Get the selected country details
+  const selectedCountry = countryCodes.find(country => country.code === selectedCountryCode);
+  const phoneHint = selectedCountry ? 
+    `${selectedCountry.minLength === selectedCountry.maxLength ? 
+      `${selectedCountry.minLength} digits required` : 
+      `${selectedCountry.minLength}-${selectedCountry.maxLength} digits required`}` : '';
 
   const onSubmit = (data: FormValues) => {
     console.log('User data submitted:', data);
@@ -104,12 +139,6 @@ const UserDetailsForm = () => {
 
     // Navigate to dashboard
     navigate('/dashboard');
-  };
-
-  // Find flag for a country code
-  const getCountryFlag = (code: string) => {
-    const country = countryCodes.find(c => c.code === code);
-    return country ? country.flag : '';
   };
 
   return (
@@ -189,13 +218,13 @@ const UserDetailsForm = () => {
                           <FormItem className="col-span-4">
                             <FormLabel>Code</FormLabel>
                             <Select 
-                              onValueChange={field.onChange} 
+                              onValueChange={(value) => onCountryCodeChange(value)} 
                               defaultValue={field.value}
                             >
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Code">
-                                    <span>{getCountryFlag(field.value)} {field.value}</span>
+                                  <SelectValue>
+                                    <span>{countryCodes.find(c => c.code === field.value)?.flag || ''} {field.value}</span>
                                   </SelectValue>
                                 </SelectTrigger>
                               </FormControl>
@@ -229,6 +258,7 @@ const UserDetailsForm = () => {
                                 <Phone className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                               </div>
                             </FormControl>
+                            {phoneHint && <p className="text-xs text-muted-foreground mt-1">{phoneHint}</p>}
                             <FormMessage />
                           </FormItem>
                         )}
